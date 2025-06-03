@@ -1,0 +1,60 @@
+# List of validation species with path to Genome and RefAnnot files
+# These are used to compute Acc per Epoch
+Val_Data:
+  Sofficinalisv1.1:
+    Genome:
+      'eudicots/eudicots_training_set/data/genomes/Sofficinalisv1.1.genome.fa'
+    RefAnnot:
+      'eudicots/eudicots_training_set/data/annot_gtf/Sofficinalisv1.1_longest.gtf'
+  Ptrichocarpav4.1:
+    Genome:
+      'eudicots/eudicots_training_set/data/genomes/Ptrichocarpav4.1.genome.fa'
+    RefAnnot:
+      'eudicots/eudicots_training_set/data/annot_gtf/Ptrichocarpav4.1_longest.gtf'
+
+# List of test species with path to Genome and RefAnnot files
+# These are used to compute Acc for 'TestWeights'
+Test_Data:
+  AthalianacolumbiaAraport11:
+    Genome:
+      'eudicots/eudicots_training_set/data/genomes/AthalianacolumbiaAraport11.genome.fa'
+    RefAnnot:
+      'eudicots/eudicots_training_set/data/annot_gtf/AthalianacolumbiaAraport11_longest.gtf'
+  EcalifornicavarAurantiacaOrangeKingPlant11HAP1v1.1:
+    Genome:
+      'eudicots/eudicots_training_set/data/genomes/EcalifornicavarAurantiacaOrangeKingPlant11HAP1v1.1.genome.fa'
+    RefAnnot:
+      'eudicots/eudicots_training_set/data/annot_gtf/EcalifornicavarAurantiacaOrangeKingPlant11HAP1v1.1_longest.gtf'
+  MguttatusvarIM62v3.1:
+    Genome:
+      'eudicots/eudicots_training_set/data/genomes/MguttatusvarIM62v3.1.genome.fa'
+    RefAnnot:
+      'eudicots/eudicots_training_set/data/annot_gtf/MguttatusvarIM62v3.1_longest.gtf'
+
+# Training Runs, each run has:
+#  - ID (e.g. train1)
+#  - directories with ID and path weigths stored after each epoch
+#  - Path to trainings weights of a single epoch for testing (optional)
+#  - Path to location for output of validation and testing
+Training:
+  train1:
+    WeightsDir:
+      0: eudicots/train/train1/0/
+      1: eudicots/train/train1/1/
+      2: eudicots/train/train1/2/
+      3: eudicots/train/train1/3/
+    HMM: False
+    TestWeights:
+      2_1: eudicots/train/train1/2/epoch_01/
+    EvalDir:
+      eudicots/eval/train1
+  train2:
+    WeightsDir:
+      0: eudicots/train/train2/0/
+    HMM:
+      True
+    EvalDir:
+      eudicots/eval/train2
+    TestWeights:
+      Null
+

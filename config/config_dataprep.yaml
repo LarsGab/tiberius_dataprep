@@ -1,0 +1,43 @@
+species_split:
+  test:
+  - AthalianacolumbiaAraport11
+  - EcalifornicavarAurantiacaOrangeKingPlant11HAP1v1.1
+  - MguttatusvarIM62v3.1
+  train:
+  - BrapassprapavarrapaVT123v1.1
+  - BvulgarissspvulgarisEL10.2_2
+  - CavellanaHAP1v4.0
+  - ClimonHapOv1.2
+  - Cspinosavarrupestrisv2.1
+  - Cviolaceav2.1
+  - Dcarotasubspsativusv3.0
+  - EgrandisvarTAG0014HAP1v4.1
+  - Fvescav4.0.a2
+  - GhirsutumDeltaPearlv1.1
+  - GmaxWm82ISU01v2.1
+  - HleucocephalaHAP1v2.1
+  - Lphilippensisv1.1
+  - Lsativa.LsPKU06
+  - MdomesticaWA_38v.a1
+  - Mesculentav8.1
+  - MflabellifoliavarSSDT_37HAP1v1.1
+  - Mlongifolia.v4
+  - MoleiferavarSKT01HAP1v1.1
+  - NtabacumvarNtaSR1v1.0
+  - OcompressavarFLAS263054v1.1
+  - UamericanavarNA87034HAP1v1.1
+  - Vvinifera.v4
+  - Carabicav1.1
+  - Acoeruleav3.1
+  val:
+  - Sofficinalisv1.1
+  - Ptrichocarpav4.1
+
+# path to directory for output (e.g. tfrecords/ annot_gtf/)
+work_dir: eudicots_training_set/data/
+
+# path to input annotations <speciesID>.gff3
+annot_dir: eudicots_training_set/data/annotations/
+
+# path to input genomes named <speciesID>.genome.fa
+genome_dir: eudicots_training_set/data/genomes/
