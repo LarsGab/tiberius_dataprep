@@ -44,35 +44,9 @@ export PATH="$(pwd):$PATH"
 echo 'export PATH="$PWD:$PATH"' >> ~/.bashrc
 ```
 
-
-## Generating TfRecords from local data
-
-Requirements: 
-A set of matching genomic sequences (FASTA) files and annotations (gff3). 
-Each match has to have an ID (e.g. latin species name) and the genome files have to be named <speciesID>.genome.fa and the annotations have to be named <speciesID>.gff3. All genome files have to be in one directory and all annnotation files have to be in one directory.
-
-Preparation:
-Configure the configuration file for the data at `config/config_dataprep.yaml`, it is filled in for the eudicot training: 
-    - List all species IDs and split them into Training/Validation/Testing.
-    - Change work_dir, annot_dir, genome_dir to appropriate location of your local files, output directory
-
-
-Run:
-```
-nextflow run  --resume -c config/nextflow.config tiberius_dataprep/genome2tfrecords.nf --configFile config/config_dataprep.yaml
-```
-
-If you are using Slurm, you can also run above command as a simple job, it will spawn jobs on the required partitions.
-
-Result:
-At the specified working directory, two directories are the result:
-- ``annot_gtf`` with the main result being ``<speciesID>_longest.gtf``, which will be used for training and evaluation
-- ``tfrecords`` with the main result being ``train/<speciesID>_<number>.tfrecords`` and list of training species ``train/species.txt`` 
-
-
 ## Generating TFRecords from local data
 
-### Input layout
+### Required Input
 
 Put matching pairs of genome FASTA and annotation GFF3 files in **two separate directories**:
 
@@ -98,7 +72,7 @@ genome_dir: /data/genomes               # directory with *.genome.fa
 annot_dir:  /data/annotations           # directory with *.gff3
 ```
 
-### Launch
+### Run the pipeline
 
 ```bash
 nextflow run tiberius_dataprep/genome2tfrecords.nf \
@@ -118,3 +92,83 @@ At `output_dir` the workflow produces two sub‑directories:
 | `annot_gtf/` | `<species_id>_longest.gtf`                             | Cleaned transcript models used during training/benchmarking |
 | `tfrecords/` | `train/<species_id>_*.tfrecords` & `train/species.txt` | Sharded TFRecord files for training Tiberius
 
+
+## Exon‑ and Transcript‑level Evaluation of Training Runs
+
+The pipeline provides two evaluation phases:
+
+1. **Per‑epoch validation** – run after every epoch on the **validation** species. These can be used for hyperparameter tuning and for choosing the final trainings weights.
+2. **Final testing** – once you have a final training weights, evaluate its weights on the **test** species. 
+
+### Required input
+
+Supply a YAML file (example for eudicots at `config/config_train_eval.yaml`) with three top‑level sections:
+
+| Key            | Purpose                                                             |
+| -------------- | ------------------------------------------------------------------- |
+| **Val\_Data**  | Map of *validation* species IDs → genome FASTA + reference GTF      |
+| **Test\_Data** | Map of *test* species IDs → genome FASTA + reference GTF (optional) |
+| **Training**   | One or more training runs to evaluate                               |
+
+Example:
+
+```yaml
+Val_Data:
+  arabidopsis_thaliana:
+    Genome: arabidopsis_thaliana.genome.fa
+    RefAnnot: arabidopsis_thaliana_longest.gtf
+
+Test_Data:
+  solanum_lycopersicum:
+    Genome: solanum_lycopersicum.genome.fa
+    RefAnnot: solanum_lycopersicum_longest.gtf
+
+Training:
+  train1:
+    WeightsDir:
+      0: train1/0/
+      1: train1/1/ # restarted run 0, because of the time limit on our cluster
+    HMM: False
+    TestWeights:
+      2_1: eudicots/train/train1/2/epoch_01/ # only used for testing
+    EvalDir:
+      eudicots/eval/train1 # output directorz
+  train2:
+    WeightsDir:
+      0: eudicots/train/train2/0/
+    HMM:
+      True
+    EvalDir:
+      eudicots/eval/train2
+    TestWeights:
+      Null
+```
+
+### Run validation
+
+```bash
+nextflow run tiberius_dataprep/eval_training.nf \
+  -c config/nextflow.config \
+  --configFile config/config_train_eval.yaml \
+  --resume
+```
+
+### Run testing (on the chosen epoch)
+
+```bash
+nextflow run tiberius_dataprep/eval_training.nf \
+  -c config/nextflow.config \
+  --configFile config/config_train_eval.yaml \
+  --resume --use_test
+```
+
+> **SLURM users:** submit either command with `sbatch`; the workflow will fan out jobs across partitions automatically.
+
+
+### Outputs
+
+For each training run, the run produces the results for each evaluation (prediction as `.gtf` and accuracy as `.stats`) in the specified `EvalDir`:
+
+### Plotting Evaluation Results
+
+See `tiberius_dataprep/plot_acc.ipynb` for examples on how to plot the evaluation results.

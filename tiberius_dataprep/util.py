@@ -66,6 +66,7 @@ def read_training_stats(training_dir, species_list=[]):
     return epoch_stats
 
 def get_best_epoch(stats, metrics=["Transcript", "Exon"], strict=True):
+    print(len(stats), stats)
     curr_best = -1
     epoch = [-1,-1]
     for i in range(500):
