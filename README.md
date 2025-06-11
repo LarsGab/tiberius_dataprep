@@ -77,7 +77,7 @@ annot_dir:  /data/annotations           # directory with *.gff3
 ```bash
 nextflow run tiberius_dataprep/genome2tfrecords.nf \
   -c config/nextflow.config \
-  --configFile config/config_dataprep.yaml \
+  --configYAML config/config_dataprep.yaml \
   --resume
 ```
 

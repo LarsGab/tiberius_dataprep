@@ -11,11 +11,11 @@ nextflow.enable.dsl = 2
 ////////////////////////////////////////////////////////////////////////
 
 params.container   = 'docker://larsgabriel23/tiberius:dev'
-params.configFile  = "../config/config_dataprep.yaml"
+params.configYAML  = "../config/config_dataprep.yaml"
 
 import groovy.yaml.YamlSlurper
 
-def cfg       = new YamlSlurper().parseText( file(params.configFile).text )
+def cfg       = new YamlSlurper().parseText( file(params.configYAML).text )
 def ANNOT_DIR = cfg.annot_dir   as String
 def GENOME_DIR= cfg.genome_dir  as String
 def OUT_DIR   = cfg.work_dir    as String
@@ -160,7 +160,7 @@ process WRITE_SPECIES_LIST {
     mkdir -p ${split}
     python3 - <<'EOF'
 import yaml, pathlib
-cfg = yaml.safe_load(open('${params.configFile}'))
+cfg = yaml.safe_load(open('${params.configYAML}'))
 species = cfg['species_split']['${split}']
 species = "" if not species else '\\n'.join(species)
 pathlib.Path('${split}/species.txt').write_text('\\n'.join(species))
