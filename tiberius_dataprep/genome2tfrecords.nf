@@ -19,7 +19,8 @@ def cfg       = new YamlSlurper().parseText( file(params.configYAML).text )
 def ANNOT_DIR = cfg.annot_dir   as String
 def GENOME_DIR= cfg.genome_dir  as String
 def OUT_DIR   = cfg.work_dir    as String
-
+def MIN_SEQ_LEN = cfg.min_seq_len ?: 500000
+def CFG_CH = Channel.value( file(params.configYAML) )
 
 ////////////////////////////////////////////////////////////////////////
 //                      BUILD META CHANNEL                            //
@@ -29,6 +30,11 @@ def speciesToSplit = [:]
 ['train','val','test'].each { split ->
     cfg.species_split[split].each { sp -> speciesToSplit[sp] = split }
 }
+
+Channel
+    .of('train','val','test')
+    .combine(CFG_CH)      
+    .set   { SPECIES_LIST_CH }         // (split , cfg_yaml)
 
 Channel
     .from( speciesToSplit.collect { sp, spl ->
@@ -136,7 +142,8 @@ process TFRECORD {
         --wsize 9999 \
         --gtf   ${gtf} \
         --fasta ${genome} \
-        --out   ${species} 
+        --out   ${species} \
+        --min_seq_len ${MIN_SEQ_LEN} \
     touch ${species}_done.txt
     """
 }
@@ -150,7 +157,7 @@ process WRITE_SPECIES_LIST {
     publishDir "${OUT_DIR}/tfrecords/", mode: 'copy'
 
     input:
-        val split
+        tuple val(split), path(cfg_yaml)
 
     output:
         path "${split}/species.txt"
@@ -160,7 +167,7 @@ process WRITE_SPECIES_LIST {
     mkdir -p ${split}
     python3 - <<'EOF'
 import yaml, pathlib
-cfg = yaml.safe_load(open('${params.configYAML}'))
+cfg = yaml.safe_load(open('${cfg_yaml}'))
 species = cfg['species_split']['${split}']
 species = "" if not species else '\\n'.join(species)
 pathlib.Path('${split}/species.txt').write_text('\\n'.join(species))
@@ -175,7 +182,7 @@ EOF
 
 workflow {
 
-    Channel.of('train','val','test') | WRITE_SPECIES_LIST
+    SPECIES_LIST_CH  | WRITE_SPECIES_LIST
 
     META_CH                               \
         | GFF3_2_GTF                      \

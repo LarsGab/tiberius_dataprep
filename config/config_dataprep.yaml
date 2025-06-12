@@ -41,3 +41,5 @@ annot_dir: eudicots_training_set/data/annotations/
 
 # path to input genomes named <speciesID>.genome.fa
 genome_dir: eudicots_training_set/data/genomes/
+
+min_seq_len: 500000

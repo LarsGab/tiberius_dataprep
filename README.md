@@ -70,6 +70,7 @@ species_split:
 work_dir:   /scratch/tiberius/work      # outputs go here
 genome_dir: /data/genomes               # directory with *.genome.fa
 annot_dir:  /data/annotations           # directory with *.gff3
+min_seq_len: 500000 # minimum sequence length of genome FASTA files used for training
 ```
 
 ### Run the pipeline
