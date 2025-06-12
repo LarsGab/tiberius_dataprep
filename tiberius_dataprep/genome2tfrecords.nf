@@ -116,7 +116,7 @@ process LONGEST_ISOFORM {
 
     script:
     """
-    get_longest_isoform.py ${gtf} > ${species}_longest.gtf
+    select_single_isoform.py ${gtf} > ${species}_longest.gtf
     """
 }
 
@@ -143,7 +143,7 @@ process TFRECORD {
         --gtf   ${gtf} \
         --fasta ${genome} \
         --out   ${species} \
-        --min_seq_len ${MIN_SEQ_LEN} \
+        --min_seq_len ${MIN_SEQ_LEN} 
     touch ${species}_done.txt
     """
 }
