@@ -38,13 +38,29 @@ Channel
 
 Channel
     .from( speciesToSplit.collect { sp, spl ->
-        tuple(sp, spl,
-              file("${ANNOT_DIR}/${sp}.gff3"),
-              file("${GENOME_DIR}/${sp}.genome.fa"))
+        def gtfFile  = file("${ANNOT_DIR}/${sp}.gtf")
+        def gff3File = file("${ANNOT_DIR}/${sp}.gff3")
+        def gffFile = file("${ANNOT_DIR}/${sp}.gff")
+
+        def annotFile
+        if (gtfFile.exists()) {
+            annotFile = gtfFile
+        } else if (gff3File.exists()) {
+            annotFile = gff3File
+        } else if (gffFile.exists()) {
+            annotFile = gff3File
+        } else {
+            error "No annotation file (.gtf, .gff or .gff3) found for ${sp} in ${ANNOT_DIR}"
+        }
+
+        tuple( sp, spl, annotFile, 
+            file("${GENOME_DIR}/${sp}.genome.fa") )
     })
     .set { META_CH }
 
-
+META_CH
+    .filter { species, split, annot, genome -> annot.name.endsWith('.gff3') }
+    .set { META_GFF3_CH }
 ////////////////////////////////////////////////////////////////////////
 //                            PROCESSES                               //
 ////////////////////////////////////////////////////////////////////////
@@ -57,7 +73,7 @@ process GFF3_2_GTF {
     memory '4 GB'
 
     input:
-        tuple val(species), val(split), path(gff3), path(genome)
+        tuple val(species), val(split), path(annot), path(genome)
 
     output:
         tuple val(species), val(split),
@@ -66,7 +82,11 @@ process GFF3_2_GTF {
 
     shell:
     """
-    gffread -T ${gff3} -o ${species}.gtf
+    if [[ "${annot}" != *.gtf ]]; then
+        gffread -T ${annot} -o ${species}.gtf
+    else
+        ln -s ${annot} ${species}.gtf
+    fi
     """
 }
 
