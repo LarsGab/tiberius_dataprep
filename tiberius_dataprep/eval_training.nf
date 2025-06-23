@@ -37,7 +37,7 @@ yamlConfig.Training.each { trainName, trainAttrs ->
         trainAttrs.TestWeights.each { twKey, twPathObj ->
 
             def epochSubdir  = file(twPathObj).toString()               // epoch_* dir
-            def weightsDir = file(twPath).parent.toString()  // its parent
+            def weightsDir = file(twPathObj).parent.toString()  // its parent
             
             epochInfoList << [
                 trainName,
@@ -140,7 +140,7 @@ process RUN_TIBERIUS {
 
     script:
     """
-    python3 /home/gabriell/programs/Tiberius/tiberius.py \
+    tiberius.py \
         --genome ${genomeFa} \
         ${hmmFlag ? '--model_old' : '--model_lstm_old'} ${weightsDirPath}/${epochDir} \
         --out ${idx}.${epochDir}.${speciesName}.gtf
