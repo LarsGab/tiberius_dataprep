@@ -116,7 +116,7 @@ def main():
     parser.add_argument("--debug", action="store_true", help="Print bad transcripts")
     args = parser.parse_args()
 
-    start_codons = {"ATG", "CTG", "GTG"}
+    start_codons = {"ATG", "CTG", "GTG", "TTG"}
     stop_codons = {"TAA", "TAG", "TGA"}
 
     genome = load_genome(args.genome)
