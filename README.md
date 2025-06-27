@@ -35,13 +35,17 @@ Get the latest release from [GitHub](https://github.com/gpertea/gffcompare/relea
 ```bash
 wget https://github.com/gpertea/gffcompare/releases/download/v0.12.9/gffcompare-0.12.9.Linux_x86_64.tar.gz
 tar xzf gffcompare-0.12.9.Linux_x86_64.tar.gz
-cd gffcompare-0.12.6.Linux_x86_64
+cd gffcompare-0.12.9.Linux_x86_64
 export PATH="$(pwd):$PATH"
 ```
 
 ```bash
 # Append this line to ~/.bashrc
 echo 'export PATH="$PWD:$PATH"' >> ~/.bashrc
+```
+### 3 · Install gffcompare
+```bash
+conda install anaconda::pyyaml
 ```
 
 ## Generating TFRecords from local data
