@@ -83,9 +83,11 @@ process GFF3_2_GTF {
     shell:
     """
     if [[ "${annot}" != *.gtf ]]; then
-        gffread -T ${annot} -o ${species}.gtf
-    else
-        ln -s ${annot} ${species}.gtf
+        # convert non-GTF to GTF
+        gffread -T "${annot}" -o "${species}.gtf"
+    elif [[ ! -e "${species}.gtf" ]]; then
+        # only create the symlink if species.gtf does _not_ yet exist
+        ln -s "${annot}" "${species}.gtf"
     fi
     """
 }
@@ -147,7 +149,7 @@ process TFRECORD {
     publishDir "${OUT_DIR}/tfrecords/${split}", mode: 'move', pattern: '*.tfrecords' 
 
     cpus   50
-    memory '950 GB'
+    memory '110 GB'
 
     input:
         tuple val(species), val(split), path(gtf), path(genome)
@@ -163,7 +165,8 @@ process TFRECORD {
         --gtf   ${gtf} \
         --fasta ${genome} \
         --out   ${species} \
-        --min_seq_len ${MIN_SEQ_LEN} 
+        --min_seq_len ${MIN_SEQ_LEN} \
+        --add_tx_ids
     touch ${species}_done.txt
     """
 }
