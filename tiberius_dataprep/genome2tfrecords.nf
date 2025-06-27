@@ -149,7 +149,7 @@ process TFRECORD {
     publishDir "${OUT_DIR}/tfrecords/${split}", mode: 'move', pattern: '*.tfrecords' 
 
     cpus   50
-    memory '110 GB'
+    memory '200 GB'
 
     input:
         tuple val(species), val(split), path(gtf), path(genome)
@@ -193,7 +193,7 @@ import yaml, pathlib
 cfg = yaml.safe_load(open('${cfg_yaml}'))
 species = cfg['species_split']['${split}']
 species = "" if not species else '\\n'.join(species)
-pathlib.Path('${split}/species.txt').write_text('\\n'.join(species))
+pathlib.Path('${split}/species.txt').write_text(species)
 EOF
     """
 }
