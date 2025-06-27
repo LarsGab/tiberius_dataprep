@@ -43,7 +43,8 @@ export PATH="$(pwd):$PATH"
 # Append this line to ~/.bashrc
 echo 'export PATH="$PWD:$PATH"' >> ~/.bashrc
 ```
-### 3 · Install gffcompare
+
+### 3 · Install pyyaml
 ```bash
 conda install anaconda::pyyaml
 ```
