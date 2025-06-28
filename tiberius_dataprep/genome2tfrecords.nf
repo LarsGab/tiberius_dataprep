@@ -155,8 +155,10 @@ process TFRECORD {
         tuple val(species), val(split), path(gtf), path(genome)
 
     output:
-        path '*.tfrecords'
-        path "${species}_done.txt"
+	tuple val(species), val(split),
+              path('*.tfrecords'),
+              path("${species}_done.txt")
+
 
     script:
     """
@@ -217,6 +219,23 @@ EOF
 }
 
 
+process CLEANUP_TFRECORDS {
+    input:
+        tuple val(species), val(split), path(tfrecords), path(done)
+
+    output:
+        path("${species}_cleaned.txt")
+
+    script:
+    """
+    echo "Cleaned ${tfrecords}" > ${species}_cleaned.txt
+    """
+}
+
+
+
+
+
 ////////////////////////////////////////////////////////////////////////
 //                            WORKFLOW                                //
 ////////////////////////////////////////////////////////////////////////
@@ -229,5 +248,5 @@ workflow {
         | GFF3_2_GTF                      \
         | REFORMAT_ANNOT                  \
         | LONGEST_ISOFORM                 \
-        | TFRECORD
+        | TFRECORD | CLEANUP_TFRECORDS
 }
