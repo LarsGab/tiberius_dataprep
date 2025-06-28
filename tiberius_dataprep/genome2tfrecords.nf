@@ -146,7 +146,7 @@ process LONGEST_ISOFORM {
 process TFRECORD {
     tag "${species}"
     container params.container
-    publishDir "${OUT_DIR}/tfrecords/${split}", mode: 'move', pattern: '*.tfrecords' 
+    publishDir "${OUT_DIR}/tfrecords/${split}", mode: 'copy', pattern: '*.tfrecords' 
 
     cpus   50
     memory '200 GB'
@@ -167,6 +167,24 @@ process TFRECORD {
         --out   ${species} \
         --min_seq_len ${MIN_SEQ_LEN} \
         --add_tx_ids
+    # Wait loop: allow file to actually appear on file system
+    for i in {1..120}; do
+    	ls *.tfrecords && break
+    	echo "Waiting for .tfrecords file to be written..."
+    	sleep 1
+    done
+
+    # Final existence check to catch failure early
+    if [ ! -f *.tfrecords ]; then
+       echo "ERROR: No .tfrecords file found after write_tfrecord_species.py"
+       exit 1
+       fi
+
+    # Sleep a random time to avoid I/O contention
+    DELAY=\$(( RANDOM % 91 + 30 ))
+    echo "Sleeping \$DELAY seconds before letting Nextflow publishDir trigger..."
+    sleep \$DELAY
+
     touch ${species}_done.txt
     """
 }
