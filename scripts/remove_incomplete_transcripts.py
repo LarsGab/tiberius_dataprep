@@ -49,6 +49,7 @@ def extract_coding_sequences(cds, genome):
             txseq = Seq("")
             txstrand = cds[seqid][tx][0]['strand']
             entries = cds[seqid][tx]
+            entries.sort(key=lambda x: x['start'])
             for i in range(0, len(entries)):
                 cds_line = entries[i]
                 if i == 0 and txstrand == '+' and cds_line['frame'] != 0:
@@ -81,10 +82,29 @@ def determine_stop_inclusion(codingseq, stop_codons, max_check=1000):
             count_stop_excluded += 1
     return count_stop_included >= count_stop_excluded
 
-def check_valid_codons(codingseq, start_codons, stop_codons, introns, cds, tx2seq, stop_included=True):
+def check_valid_codons(codingseq, start_codons, stop_codons, introns, cds, tx2seq, genome, stop_included=True):
     valid_tx = set()
     bad_summary = []
     for tx, rec in codingseq.items():
+        entries = cds[tx2seq[tx]][tx]
+        strands = set(entry['strand'] for entry in entries)
+        if len(strands) != 1:
+            bad_summary.append((tx, "mixed_strands", ""))
+            continue
+        entries = sorted(cds[tx2seq[tx]][tx], key=lambda x: x['start'])
+        for i in range(1, len(entries)):
+            if entries[i]['start'] <= entries[i-1]['end']:
+                bad_summary.append((tx, "overlapping_CDS", f"{entries[i-1]['start']}-{entries[i]['end']}"))
+                continue
+        for entry in entries:
+            if 'frame' not in entry or entry['frame'] not in [0, 1, 2]:
+                bad_summary.append((tx, "invalid_frame", ""))
+                continue
+        seq_len = len(genome[tx2seq[tx]].seq)
+        for entry in entries:
+            if entry['start'] < 1 or entry['end'] > seq_len:
+                bad_summary.append((tx, "cds_out_of_bounds", f"{entry['start']}-{entry['end']} > {seq_len}"))
+                continue
         seq = str(rec.seq).upper().strip("N")
         if len(seq) < 6:
             bad_summary.append((tx, "short_seq", ""))
@@ -147,7 +167,7 @@ def main():
 
     stop_included = determine_stop_inclusion(codingseq, stop_codons)
 
-    valid_tx, bad_summary = check_valid_codons(codingseq, start_codons, stop_codons, introns, cds, tx2seq, stop_included)
+    valid_tx, bad_summary = check_valid_codons(codingseq, start_codons, stop_codons, introns, cds, tx2seq, genome, stop_included)
 
     filter_gtf(args.gtf, args.output, valid_tx)
 
