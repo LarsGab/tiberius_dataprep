@@ -126,6 +126,10 @@ def check_valid_codons(codingseq, start_codons, stop_codons, introns, cds, tx2se
             continue
 
         if has_start and has_stop:
+            protein = Seq(seq).translate(table=1, to_stop=False)
+            if "*" in protein[:-1]:  # ignore stop codon at end
+                bad_summary.append((tx, "internal_stop", ""))
+                continue
             valid_tx.add(tx)
         else:
             bad_summary.append((tx, start if not has_start else "", stop if not has_stop else ""))
