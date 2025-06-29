@@ -155,7 +155,7 @@ Training:
 ```bash
 nextflow run tiberius_dataprep/eval_training.nf \
   -c config/nextflow.config \
-  --configFile config/config_train_eval.yaml \
+  --config config/config_train_eval.yaml \
   --resume
 ```
 
