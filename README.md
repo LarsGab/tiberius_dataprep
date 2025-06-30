@@ -30,12 +30,14 @@ echo 'export PATH="$PWD:$PATH"' >> ~/.bashrc
 
 ### 2 · Install gffcompare
 
-Get the latest release from [GitHub](https://github.com/gpertea/gffcompare/releases/tag/v0.12.9) 
+Get version 0.12.6 from [GitHub](https://github.com/gpertea/gffcompare/releases/tag/v0.12.6).
+> **Important:**  Only use version *0.12.6*. Newer releases (e.g. v0.12.9) may report inaccurate results.
+
 
 ```bash
-wget https://github.com/gpertea/gffcompare/releases/download/v0.12.9/gffcompare-0.12.9.Linux_x86_64.tar.gz
-tar xzf gffcompare-0.12.9.Linux_x86_64.tar.gz
-cd gffcompare-0.12.9.Linux_x86_64
+wget https://github.com/gpertea/gffcompare/releases/download/v0.12.9/gffcompare-0.12.6.Linux_x86_64.tar.gz
+tar xzf gffcompare-0.12.6.Linux_x86_64.tar.gz
+cd gffcompare-0.12.6.Linux_x86_64
 export PATH="$(pwd):$PATH"
 ```
 
