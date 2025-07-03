@@ -167,8 +167,8 @@ process TFRECORD {
         --gtf   ${gtf} \
         --fasta ${genome} \
         --out   ${species} \
-        --min_seq_len ${MIN_SEQ_LEN} \
-        --add_tx_ids
+        --min_seq_len ${MIN_SEQ_LEN}
+
     # Wait loop: allow file to actually appear on file system
     for i in {1..120}; do
     	ls *.tfrecords && break
