@@ -110,7 +110,7 @@ process RUN_TIBERIUS {
     publishDir {"${evalDir}/"}, mode:'copy', pattern: '*.gtf'
 
     container params.container
-    
+    storeDir "cache/${task.process}/${evalDir}/"
     memory '190 GB'
     input:
         tuple(
@@ -153,6 +153,7 @@ process RUN_TIBERIUS {
 process RUN_GFFCOMPARE {
 
     publishDir {"${evalDir}/"}, mode:'copy', pattern: '*.stats'
+    storeDir "cache/${task.process}/${evalDir}/"
 
     input:
         tuple (
@@ -177,6 +178,10 @@ process RUN_GFFCOMPARE {
       --strict-match -e 0 -T --no-merge \
       ${gtf} \
       -o ${idx}.${epochDir}.${speciesName}.stats
+    # Sleep a random time to avoid I/O contention
+    DELAY=\$(( RANDOM % 91 + 30 ))
+    echo "Sleeping \$DELAY seconds before letting Nextflow publishDir trigger..."
+    sleep \$DELAY
     """
 }
 
