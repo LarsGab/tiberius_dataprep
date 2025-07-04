@@ -110,7 +110,7 @@ process RUN_TIBERIUS {
     publishDir {"${evalDir}/"}, mode:'copy', pattern: '*.gtf'
 
     container params.container
-    storeDir "cache/${task.process}/${evalDir}/"
+    storeDir "cache/${task.process}/${trainName}/"
     memory '190 GB'
     input:
         tuple(
@@ -153,7 +153,7 @@ process RUN_TIBERIUS {
 process RUN_GFFCOMPARE {
 
     publishDir {"${evalDir}/"}, mode:'copy', pattern: '*.stats'
-    storeDir "cache/${task.process}/${evalDir}/"
+    storeDir "cache/${task.process}/${trainName}/"
 
     input:
         tuple (
