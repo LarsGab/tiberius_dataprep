@@ -150,6 +150,7 @@ process TFRECORD {
 
     cpus   50
     memory '200 GB'
+    time  '24h'
 
     input:
         tuple val(species), val(split), path(gtf), path(genome)
