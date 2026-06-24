@@ -26,13 +26,9 @@ def cfg       = new YamlSlurper().parseText( file(params.configYAML).text )
 def ANNOT_DIR = cfg.annot_dir   as String
 def GENOME_DIR= cfg.genome_dir  as String
 def OUT_DIR   = cfg.work_dir    as String
-// 500004 is the TFRecord chunk size; sequences shorter than this yield 0 chunks.
-// Sequences in [min_seq_len, 500004) pass the filter but produce no training data,
-// so the floor and the default should be 500004.
-def MIN_SEQ_LEN = cfg.min_seq_len ?: 500004
-if (MIN_SEQ_LEN < 500004) {
-    log.warn "min_seq_len=${MIN_SEQ_LEN} is below the 500004 bp chunk size; sequences in [${MIN_SEQ_LEN}, 500004) will be silently dropped."
-}
+// Minimum genome sequence length (in bp) eligible for training.
+// Sequences shorter than this are filtered out before being chunked.
+def MIN_SEQ_LEN = cfg.min_seq_len ?: 500000
 def CFG_CH = Channel.value( file(params.configYAML) )
 
 ////////////////////////////////////////////////////////////////////////
@@ -183,6 +179,7 @@ process TFRECORD {
 
 process WRITE_SPECIES_LIST {
     tag "${split}"
+    container params.container
     cpus   1
     memory '1 GB'
 

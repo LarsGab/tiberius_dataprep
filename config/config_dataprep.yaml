@@ -42,6 +42,6 @@ annot_dir: eudicots_training_set/data/annotations/
 # path to input genomes named <speciesID>.genome.fa
 genome_dir: eudicots_training_set/data/genomes/
 
-# Sequences shorter than this are excluded from training. Must be >= 500004,
-# the TFRecord chunk size; lower values silently drop boundary sequences.
-min_seq_len: 500004
+# Minimum genome sequence length (in bp) used for training.
+# Sequences shorter than this are filtered out.
+min_seq_len: 500000

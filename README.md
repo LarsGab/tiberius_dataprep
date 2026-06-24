@@ -5,7 +5,10 @@
 
 ## Installation
 
-The Pipelines require Nextflow, Singularity and gffcompare
+The pipelines need three things on the host: Nextflow, a container runtime
+(Singularity or Docker), and gffcompare (only used by `eval_training.nf`).
+Everything else — Python, TensorFlow, Tiberius itself, `gffread` — lives inside
+the pinned container.
 
 ### 1 · Install Nextflow
 
@@ -48,21 +51,19 @@ export PATH="$(pwd):$PATH"
 echo 'export PATH="$PWD:$PATH"' >> ~/.bashrc
 ```
 
-### 3 · Install pyyaml
-```bash
-conda install anaconda::pyyaml
-```
-
 ## Generating TFRecords from local data
 
 ### Required Input
 
-Put matching pairs of genome FASTA and annotation GFF3 files in **two separate directories**:
+Put matching pairs of genome FASTA and annotation files in **two separate directories**:
 
 | File            | Naming pattern                              |
 | --------------- | ------------------------------------------- |
 | Genome sequence | `<species_id>.genome.fa`                    |
-| Gene annotation | `<species_id>.gff3`                         |
+| Gene annotation | `<species_id>.gtf`, `.gff3`, or `.gff`      |
+
+The pipeline picks the annotation file by extension in that order. Non-GTF files
+are converted with `gffread -T` before further processing.
 
 `<species_id>` is an arbitrary identifier (typically the Latin binomial—e.g. `arabidopsis_thaliana`) that must be identical for each matching pair. Every genome file must live in *one* directory (`genome_dir`) and every annotation file in *another* (`annot_dir`). 
 
@@ -79,7 +80,7 @@ species_split:
 work_dir:   /scratch/tiberius/work      # outputs go here
 genome_dir: /data/genomes               # directory with *.genome.fa
 annot_dir:  /data/annotations           # directory with *.gff3
-min_seq_len: 500004 # minimum sequence length used for training; must be >= the 500004 bp TFRecord chunk size
+min_seq_len: 500000 # minimum sequence length (bp) used for training; shorter sequences are filtered out
 ```
 
 ### Choose a Tiberius version
@@ -225,3 +226,17 @@ For each training run, the run produces the results for each evaluation (predict
 ### Plotting Evaluation Results
 
 See `tiberius_dataprep/plot_acc.ipynb` for examples on how to plot the evaluation results.
+
+## Running the tests
+
+Unit tests cover the helpers in `tiberius_dataprep/util.py` (stats parsing,
+best-epoch selection, plotting). Install the package with its test extras and
+run `pytest`:
+
+```bash
+pip install -e ".[test]"
+pytest
+```
+
+GitHub Actions runs the same suite on every push and pull request — see
+`.github/workflows/ci.yml`.
