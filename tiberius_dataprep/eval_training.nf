@@ -16,9 +16,7 @@ params.container   = "docker://larsgabriel23/tiberius:${TIBERIUS_TAG_FOR[params.
 params.config_yaml = '../config/config.yaml'
 params.use_test    = false
 
-import groovy.yaml.YamlSlurper
-
-def cfg        = new YamlSlurper().parse(file(params.config_yaml))
+def cfg        = new groovy.yaml.YamlSlurper().parse(file(params.config_yaml))
 def GENOME_DIR = cfg.genome_dir as String
 def WORK_DIR   = cfg.work_dir   as String
 def splitName  = params.use_test ? 'test' : 'val'

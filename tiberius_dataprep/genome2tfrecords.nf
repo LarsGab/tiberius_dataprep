@@ -20,9 +20,7 @@ if (!TIBERIUS_TAG_FOR.containsKey(params.tiberius_version)) {
 params.container   = "docker://larsgabriel23/tiberius:${TIBERIUS_TAG_FOR[params.tiberius_version]}"
 params.config_yaml  = "../config/config.yaml"
 
-import groovy.yaml.YamlSlurper
-
-def cfg       = new YamlSlurper().parseText( file(params.config_yaml).text )
+def cfg       = new groovy.yaml.YamlSlurper().parseText( file(params.config_yaml).text )
 def ANNOT_DIR = cfg.annot_dir   as String
 def GENOME_DIR= cfg.genome_dir  as String
 def OUT_DIR   = cfg.work_dir    as String
