@@ -10,6 +10,10 @@ The pipelines need three things on the host: Nextflow, a container runtime
 Everything else — Python, TensorFlow, Tiberius itself, `gffread` — lives inside
 the pinned container.
 
+> You do **not** need to `pip install .` to run the pipelines or open
+> `plot_acc.ipynb`. A Python install is only required to run the unit tests
+> (see *Running the tests* at the bottom of this file).
+
 ### 1 · Install Nextflow
 
 See Nextflow [Documentation](https://www.nextflow.io/docs/latest/install.html) for more information
@@ -81,6 +85,7 @@ work_dir:   /scratch/tiberius/work      # outputs go here
 genome_dir: /data/genomes               # directory with *.genome.fa
 annot_dir:  /data/annotations           # directory with *.gff3
 min_seq_len: 500000 # minimum sequence length (bp) used for training; shorter sequences are filtered out
+chunk_size:  9999   # size (bp) of each TFRecord chunk; forwarded to write_tfrecord_species.py as --wsize
 ```
 
 ### Choose a Tiberius version
@@ -110,8 +115,8 @@ The pipeline ships with a few ready-made profiles. Pick one with `-profile`:
 | `slurm_brain`        | BRAIN cluster (Univ. Greifswald), Singularity, GPU on `vision`.              |
 | `slurm_generic`      | Any Slurm cluster, Singularity. No queue or `clusterOptions` assumed.        |
 
-If your site is not one of these, copy `conf/slurm_generic.config` to
-`conf/slurm_<yoursite>.config`, edit the executor/queue/cpus/memory/time to your
+If your site is not one of these, copy `config/slurm_generic.config` to
+`config/slurm_<yoursite>.config`, edit the executor/queue/cpus/memory/time to your
 site's defaults, and add a matching entry to the `profiles { ... }` block in
 `nextflow.config`. Then run with `-profile slurm_<yoursite>`. No `-c` flag is
 needed — Nextflow auto-loads `nextflow.config` from the repo root.

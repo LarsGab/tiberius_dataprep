@@ -45,3 +45,7 @@ genome_dir: eudicots_training_set/data/genomes/
 # Minimum genome sequence length (in bp) used for training.
 # Sequences shorter than this are filtered out.
 min_seq_len: 500000
+
+# Size (in bp) of each TFRecord chunk written from a genome sequence.
+# Forwarded to write_tfrecord_species.py as --wsize.
+chunk_size: 9999

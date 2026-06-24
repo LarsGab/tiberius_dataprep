@@ -29,6 +29,9 @@ def OUT_DIR   = cfg.work_dir    as String
 // Minimum genome sequence length (in bp) eligible for training.
 // Sequences shorter than this are filtered out before being chunked.
 def MIN_SEQ_LEN = cfg.min_seq_len ?: 500000
+// Size (in bp) of each TFRecord chunk written from a genome sequence.
+// Forwarded to write_tfrecord_species.py as --wsize.
+def CHUNK_SIZE  = cfg.chunk_size  ?: 9999
 def CFG_CH = Channel.value( file(params.configYAML) )
 
 ////////////////////////////////////////////////////////////////////////
@@ -168,7 +171,7 @@ process TFRECORD {
     script:
     """
     write_tfrecord_species.py \\
-        --wsize 9999 \\
+        --wsize ${CHUNK_SIZE} \\
         --gtf   ${gtf} \\
         --fasta ${genome} \\
         --out   ${species} \\

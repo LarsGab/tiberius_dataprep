@@ -56,7 +56,7 @@ echo 'export PATH="$PWD:$PATH"' >> ~/.bashrc
 
 See *Choosing an execution profile* in the main `README.md` for how to point
 the pipeline at your cluster. The bundled `slurm_brain` profile matches the
-BRAIN cluster at University Greifswald; copy `conf/slurm_generic.config` to add
+BRAIN cluster at University Greifswald; copy `config/slurm_generic.config` to add
 your own.
 
 ### gffcompare
