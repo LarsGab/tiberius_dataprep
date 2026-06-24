@@ -1,0 +1,88 @@
+# Unified configuration for both pipelines.
+# - genome2tfrecords.nf reads: species_split, work_dir, annot_dir, genome_dir,
+#   min_seq_len, chunk_size.
+# - eval_training.nf  reads:   species_split, work_dir, genome_dir, training.
+#
+# Pass with `--config_yaml config/config.yaml`.
+
+species_split:
+  train:
+  - BrapassprapavarrapaVT123v1.1
+  - BvulgarissspvulgarisEL10.2_2
+  - CavellanaHAP1v4.0
+  - ClimonHapOv1.2
+  - Cspinosavarrupestrisv2.1
+  - Cviolaceav2.1
+  - Dcarotasubspsativusv3.0
+  - EgrandisvarTAG0014HAP1v4.1
+  - Fvescav4.0.a2
+  - GhirsutumDeltaPearlv1.1
+  - GmaxWm82ISU01v2.1
+  - HleucocephalaHAP1v2.1
+  - Lphilippensisv1.1
+  - Lsativa.LsPKU06
+  - MdomesticaWA_38v.a1
+  - Mesculentav8.1
+  - MflabellifoliavarSSDT_37HAP1v1.1
+  - Mlongifolia.v4
+  - MoleiferavarSKT01HAP1v1.1
+  - NtabacumvarNtaSR1v1.0
+  - OcompressavarFLAS263054v1.1
+  - UamericanavarNA87034HAP1v1.1
+  - Vvinifera.v4
+  - Carabicav1.1
+  - Acoeruleav3.1
+  val:
+  - Sofficinalisv1.1
+  - Ptrichocarpav4.1
+  test:
+  - AthalianacolumbiaAraport11
+  - EcalifornicavarAurantiacaOrangeKingPlant11HAP1v1.1
+  - MguttatusvarIM62v3.1
+
+# Path to directory for pipeline outputs (tfrecords/ and annot_gtf/).
+work_dir: eudicots_training_set/data/
+
+# Path to input annotations: <species_id>.{gtf,gff3,gff}
+annot_dir: eudicots_training_set/data/annotations/
+
+# Path to input genomes: <species_id>.genome.fa
+genome_dir: eudicots_training_set/data/genomes/
+
+# Minimum genome sequence length (in bp) used for training.
+# Sequences shorter than this are filtered out.
+min_seq_len: 500000
+
+# Size (in bp) of each TFRecord chunk written from a genome sequence.
+# Forwarded to write_tfrecord_species.py as --wsize.
+chunk_size: 9999
+
+# ---------------------------------------------------------------------------
+# Evaluation pipeline (eval_training.nf) only -- fill in once training has
+# produced weight directories. Leave empty/absent if you only run dataprep.
+#
+# For each species in species_split.{val,test}, eval_training.nf derives:
+#   genome:    <genome_dir>/<species_id>.genome.fa
+#   ref_annot: <work_dir>/annot_gtf/<species_id>_longest.gtf  (dataprep output)
+#
+# Per run:
+#   weights_dirs : directories to scan for epoch_* subdirs (validation runs)
+#   test_weights : specific epoch directories evaluated with --use_test
+#   eval_dir     : where to publish the per-epoch .gtf and .stats files
+#   hmm          : true if the model includes the HMM head, false otherwise
+# ---------------------------------------------------------------------------
+training:
+  train1:
+    weights_dirs:
+      - eudicots/train/train1/0/
+      - eudicots/train/train1/1/
+    test_weights:
+      - eudicots/train/train1/2/epoch_01/
+    eval_dir: eudicots/eval/train1
+    hmm: false
+  train2:
+    weights_dirs:
+      - eudicots/train/train2/0/
+    test_weights: []
+    eval_dir: eudicots/eval/train2
+    hmm: true

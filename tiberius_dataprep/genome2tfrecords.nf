@@ -18,11 +18,11 @@ if (!TIBERIUS_TAG_FOR.containsKey(params.tiberius_version)) {
     error "params.tiberius_version must be one of ${TIBERIUS_TAG_FOR.keySet()} (got '${params.tiberius_version}')"
 }
 params.container   = "docker://larsgabriel23/tiberius:${TIBERIUS_TAG_FOR[params.tiberius_version]}"
-params.configYAML  = "../config/config_dataprep.yaml"
+params.config_yaml  = "../config/config.yaml"
 
 import groovy.yaml.YamlSlurper
 
-def cfg       = new YamlSlurper().parseText( file(params.configYAML).text )
+def cfg       = new YamlSlurper().parseText( file(params.config_yaml).text )
 def ANNOT_DIR = cfg.annot_dir   as String
 def GENOME_DIR= cfg.genome_dir  as String
 def OUT_DIR   = cfg.work_dir    as String
@@ -32,7 +32,7 @@ def MIN_SEQ_LEN = cfg.min_seq_len ?: 500000
 // Size (in bp) of each TFRecord chunk written from a genome sequence.
 // Forwarded to write_tfrecord_species.py as --wsize.
 def CHUNK_SIZE  = cfg.chunk_size  ?: 9999
-def CFG_CH = Channel.value( file(params.configYAML) )
+def CFG_CH = Channel.value( file(params.config_yaml) )
 
 ////////////////////////////////////////////////////////////////////////
 //                      BUILD META CHANNEL                            //

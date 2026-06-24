@@ -13,48 +13,56 @@ if (!TIBERIUS_TAG_FOR.containsKey(params.tiberius_version)) {
     error "params.tiberius_version must be one of ${TIBERIUS_TAG_FOR.keySet()} (got '${params.tiberius_version}')"
 }
 params.container   = "docker://larsgabriel23/tiberius:${TIBERIUS_TAG_FOR[params.tiberius_version]}"
-params.config      = '../config/config_train_eval.yaml'
+params.config_yaml = '../config/config.yaml'
+params.use_test    = false
 
 import groovy.yaml.YamlSlurper
 
-def yamlConfig = new YamlSlurper().parse(file(params.config))
-def dataSpecies = params.use_test ? yamlConfig.Test_Data
-                                  : yamlConfig.Val_Data
+def cfg        = new YamlSlurper().parse(file(params.config_yaml))
+def GENOME_DIR = cfg.genome_dir as String
+def WORK_DIR   = cfg.work_dir   as String
+def splitName  = params.use_test ? 'test' : 'val'
+def speciesList = cfg.species_split?."${splitName}" ?: []
 
-if( !dataSpecies )
-    throw new IllegalArgumentException(
-        "Requested ${params.use_test ? 'Test_Data' : 'Val_Data'} section " +
-        "is missing in config_train_eval.yaml" )
+if( !speciesList )
+    error "species_split.${splitName} is empty or missing in ${params.config_yaml}"
 
-params.species_meta = dataSpecies.collect { speciesName, attrs ->
+if( !cfg.training )
+    error "training: section is empty or missing in ${params.config_yaml}"
+
+// Derive per-species genome + reference annotation paths from the dataprep
+// conventions: genome under genome_dir, ref annot is dataprep's output GTF.
+def speciesMeta = speciesList.collect { sp ->
     [
-        speciesName,
-        attrs.Genome.toString(),
-        attrs.RefAnnot.toString()
+        sp,
+        "${GENOME_DIR}/${sp}.genome.fa".toString(),
+        "${WORK_DIR}/annot_gtf/${sp}_longest.gtf".toString()
     ]
 }
 
-// 3) Scan all Training → WeightsDir → epoch_* subdirs to collect every epoch directory
 // epochInfoList rows: [ trainName, idx, epochDir (str), evalDir (str), hmmFlag ]
 def epochInfoList = []
-yamlConfig.Training.each { trainName, trainAttrs ->
+cfg.training.each { trainName, trainAttrs ->
 
-    def hmmFlag = (trainAttrs.HMM ?: false)
+    def hmmFlag = (trainAttrs.hmm ?: false)
+    def evalDir = trainAttrs.eval_dir?.toString()
+    if( !evalDir )
+        error "training.${trainName}.eval_dir is missing in ${params.config_yaml}"
 
-    if( params.use_test && trainAttrs.TestWeights ) {
-        trainAttrs.TestWeights.each { twKey, twPathObj ->
+    if( params.use_test ) {
+        (trainAttrs.test_weights ?: []).eachWithIndex { twPath, i ->
             epochInfoList << [
                 trainName,
-                twKey,                              // YAML key used as idx
-                file(twPathObj).toString(),
-                trainAttrs.EvalDir.toString(),
+                "test_${i}",
+                file(twPath).toString(),
+                evalDir,
                 hmmFlag
             ]
         }
-        return  // skip the WeightsDir loop for this trainName
+        return  // skip the weights_dirs scan for this trainName
     }
 
-    trainAttrs.WeightsDir.each { idx, weightsDirPath ->
+    (trainAttrs.weights_dirs ?: []).eachWithIndex { weightsDirPath, idx ->
         def baseDir = file(weightsDirPath.toString())
         if( baseDir.isDirectory() ) {
             baseDir.listFiles()
@@ -64,7 +72,7 @@ yamlConfig.Training.each { trainName, trainAttrs ->
                         trainName,
                         idx,
                         epochSubdir.toString(),
-                        trainAttrs.EvalDir.toString(),
+                        evalDir,
                         hmmFlag
                     ]
                 }
@@ -72,9 +80,9 @@ yamlConfig.Training.each { trainName, trainAttrs ->
     }
 }
 
-// Channel of (species, genome.fa, annot.gtf) using Val_Data only
+// Channel of (species, genome.fa, annot.gtf) for the chosen split.
 Channel
-    .from( params.species_meta )
+    .from( speciesMeta )
     .map { row -> tuple( row[0], file(row[1]), file(row[2]) ) }
     .set { SPECIES_META }
 
@@ -101,9 +109,6 @@ SPECIES_META
     .set { JOB_INPUTS }
 
 //--------------------------------------------------------------------------
-// Process 1: run_tiberius  ≈  rule run_tiberius
-//--------------------------------------------------------------------------
-// ─────────── 4-A.  Process RUN_TIBERIUS – add species & genome.fa ───────
 process RUN_TIBERIUS {
     label 'gpu'
 
@@ -144,8 +149,6 @@ process RUN_TIBERIUS {
     """
 }
 
-//--------------------------------------------------------------------------
-// PROCESS 2 ─ RUN_GFFCOMPARE
 //--------------------------------------------------------------------------
 process RUN_GFFCOMPARE {
 

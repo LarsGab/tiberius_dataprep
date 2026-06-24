@@ -73,17 +73,21 @@ are converted with `gffread -T` before further processing.
 
 ### Configure the run
 
-Edit `config/config_dataprep.yaml` to point the pipeline to your local data and to define the train/validation/test splits:
+Both pipelines read the same `config/config.yaml`. The dataprep pipeline only
+uses the top-level keys shown below; the `training:` block is added later for
+the evaluation pipeline (see *Exon- and Transcript-level Evaluation* further
+down).
 
 ```yaml
 species_split:
   train: [arabidopsis_thaliana, solanum_lycopersicum, capsicum_annuum]
-  val: [brassica_napus]
+  val:   [brassica_napus]
   test:  [oryza_sativa]
 
-work_dir:   /scratch/tiberius/work      # outputs go here
+work_dir:   /scratch/tiberius/work      # pipeline output root
 genome_dir: /data/genomes               # directory with *.genome.fa
-annot_dir:  /data/annotations           # directory with *.gff3
+annot_dir:  /data/annotations           # directory with *.{gtf,gff3,gff}
+
 min_seq_len: 500000 # minimum sequence length (bp) used for training; shorter sequences are filtered out
 chunk_size:  9999   # size (bp) of each TFRecord chunk; forwarded to write_tfrecord_species.py as --wsize
 ```
@@ -126,7 +130,7 @@ needed — Nextflow auto-loads `nextflow.config` from the repo root.
 ```bash
 nextflow run tiberius_dataprep/genome2tfrecords.nf \
   -profile local_singularity \
-  --configYAML config/config_dataprep.yaml \
+  --config_yaml config/config.yaml \
   --tiberius_version 2.x \
   --resume
 ```
@@ -154,47 +158,40 @@ The pipeline provides two evaluation phases:
 
 ### Required input
 
-Supply a YAML file (example for eudicots at `config/config_train_eval.yaml`) with three top‑level sections:
-
-| Key            | Purpose                                                             |
-| -------------- | ------------------------------------------------------------------- |
-| **Val\_Data**  | Map of *validation* species IDs → genome FASTA + reference GTF      |
-| **Test\_Data** | Map of *test* species IDs → genome FASTA + reference GTF (optional) |
-| **Training**   | One or more training runs to evaluate                               |
-
-Example:
+Add a `training:` block to the same `config/config.yaml` you used for dataprep.
+The pipeline derives per-species genome and reference-annotation paths from the
+existing `species_split`, `genome_dir`, and `work_dir` fields, so all that's
+new is the training-run metadata:
 
 ```yaml
-Val_Data:
-  arabidopsis_thaliana:
-    Genome: arabidopsis_thaliana.genome.fa
-    RefAnnot: arabidopsis_thaliana_longest.gtf
+# (species_split, work_dir, genome_dir, ... already defined above)
 
-Test_Data:
-  solanum_lycopersicum:
-    Genome: solanum_lycopersicum.genome.fa
-    RefAnnot: solanum_lycopersicum_longest.gtf
-
-Training:
+training:
   train1:
-    WeightsDir:
-      0: train1/0/
-      1: train1/1/ # restarted run 0, because of the time limit on our cluster
-    HMM: False
-    TestWeights:
-      2_1: eudicots/train/train1/2/epoch_01/ # only used for testing
-    EvalDir:
-      eudicots/eval/train1 # output directorz
+    weights_dirs:          # validation: scan each for epoch_* subdirs
+      - eudicots/train/train1/0/
+      - eudicots/train/train1/1/
+    test_weights:          # testing: run only these checkpoints
+      - eudicots/train/train1/2/epoch_01/
+    eval_dir: eudicots/eval/train1
+    hmm: false             # true if the model includes the HMM head
   train2:
-    WeightsDir:
-      0: eudicots/train/train2/0/
-    HMM:
-      True
-    EvalDir:
-      eudicots/eval/train2
-    TestWeights:
-      Null
+    weights_dirs:
+      - eudicots/train/train2/0/
+    test_weights: []
+    eval_dir: eudicots/eval/train2
+    hmm: true
 ```
+
+Per species in `species_split.{val,test}`, the pipeline expects:
+
+| Resource                | Auto-derived path                                       |
+| ----------------------- | ------------------------------------------------------- |
+| Genome FASTA            | `<genome_dir>/<species_id>.genome.fa`                   |
+| Reference annotation    | `<work_dir>/annot_gtf/<species_id>_longest.gtf`         |
+
+The reference annotation is the dataprep pipeline's `*_longest.gtf` output, so
+run dataprep first.
 
 Set `--tiberius_version` to the version that produced the weights (`1.x` for
 weights trained with Tiberius 1.1.8, `2.x` for 2.0.6 — the default).
@@ -204,7 +201,7 @@ weights trained with Tiberius 1.1.8, `2.x` for 2.0.6 — the default).
 ```bash
 nextflow run tiberius_dataprep/eval_training.nf \
   -profile slurm_brain \
-  --config config/config_train_eval.yaml \
+  --config_yaml config/config.yaml \
   --tiberius_version 2.x \
   --resume
 ```
@@ -214,7 +211,7 @@ nextflow run tiberius_dataprep/eval_training.nf \
 ```bash
 nextflow run tiberius_dataprep/eval_training.nf \
   -profile slurm_brain \
-  --config config/config_train_eval.yaml \
+  --config_yaml config/config.yaml \
   --tiberius_version 2.x \
   --resume --use_test
 ```
