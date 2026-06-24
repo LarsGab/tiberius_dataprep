@@ -11,7 +11,10 @@ nextflow.enable.dsl = 2
 
 // Override the whole image with --container docker://my/image:tag if needed.
 params.tiberius_version = '2.x'
-params.config_yaml      = "../config/config.yaml"
+// Accept the legacy --configYAML flag as an alias for --config_yaml. "First
+// assignment wins" in Nextflow 26, so a CLI --config_yaml beats the alias,
+// and a CLI --configYAML feeds in via the ?: fallback.
+params.config_yaml      = params.containsKey('configYAML') ? params.configYAML : "../config/config.yaml"
 // NB: do NOT declare YAML-derived params here. In Nextflow 26 the first
 // assignment to a param wins; setting them to null at top level would
 // silently shadow the values the workflow loads from the YAML.
@@ -199,23 +202,25 @@ workflow {
 
     // (species, split, annotFile, genomeFa) channel for the main chain
     def metaCh = Channel.from(speciesToSplit.collect { sp, spl ->
-        def gtfFile  = file("${ANNOT_DIR}/${sp}.gtf")
-        def gff3File = file("${ANNOT_DIR}/${sp}.gff3")
-        def gffFile  = file("${ANNOT_DIR}/${sp}.gff")
+        def annotCandidates = [
+            file("${ANNOT_DIR}/${sp}.gtf"),
+            file("${ANNOT_DIR}/${sp}.gff3"),
+            file("${ANNOT_DIR}/${sp}.gff"),
+        ]
+        def annotFile = annotCandidates.find { it.exists() }
+        if (!annotFile)
+            error "No annotation file (.gtf, .gff3 or .gff) found for ${sp} in ${ANNOT_DIR}"
 
-        def annotFile
-        if (gtfFile.exists()) {
-            annotFile = gtfFile
-        } else if (gff3File.exists()) {
-            annotFile = gff3File
-        } else if (gffFile.exists()) {
-            annotFile = gffFile
-        } else {
-            error "No annotation file (.gtf, .gff or .gff3) found for ${sp} in ${ANNOT_DIR}"
-        }
+        def genomeCandidates = [
+            file("${GENOME_DIR}/${sp}.genome.fa"),
+            file("${GENOME_DIR}/${sp}.fa"),
+            file("${GENOME_DIR}/${sp}.fasta"),
+        ]
+        def genomeFile = genomeCandidates.find { it.exists() }
+        if (!genomeFile)
+            error "No genome FASTA (.genome.fa, .fa or .fasta) found for ${sp} in ${GENOME_DIR}"
 
-        tuple( sp, spl, annotFile,
-            file("${GENOME_DIR}/${sp}.genome.fa") )
+        tuple(sp, spl, annotFile, genomeFile)
     })
 
     speciesListCh | WRITE_SPECIES_LIST

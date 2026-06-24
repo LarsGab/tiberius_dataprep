@@ -11,7 +11,12 @@ nextflow.enable.dsl = 2
 
 // Override the whole image with --container docker://my/image:tag if needed.
 params.tiberius_version = '2.x'
-params.config_yaml      = '../config/config.yaml'
+// Accept the legacy --config flag (eval_training only) and --configYAML
+// (dataprep) as aliases for --config_yaml. "First assignment wins" in
+// Nextflow 26, so a CLI --config_yaml beats the alias.
+params.config_yaml      = params.containsKey('config')     ? params.config
+                        : params.containsKey('configYAML') ? params.configYAML
+                        : '../config/config.yaml'
 params.use_test         = false
 // NB: do NOT declare params.container at top level. In Nextflow 26 the first
 // assignment wins, so a null default would shadow the workflow's resolution.
@@ -126,9 +131,18 @@ workflow {
 
     // Derive per-species genome + reference annotation from dataprep conventions.
     def speciesMeta = speciesList.collect { sp ->
+        def genomeCandidates = [
+            file("${GENOME_DIR}/${sp}.genome.fa"),
+            file("${GENOME_DIR}/${sp}.fa"),
+            file("${GENOME_DIR}/${sp}.fasta"),
+        ]
+        def genomeFile = genomeCandidates.find { it.exists() }
+        if (!genomeFile)
+            error "No genome FASTA (.genome.fa, .fa or .fasta) found for ${sp} in ${GENOME_DIR}"
+
         [
             sp,
-            "${GENOME_DIR}/${sp}.genome.fa".toString(),
+            genomeFile.toString(),
             "${WORK_DIR}/annot_gtf/${sp}_longest.gtf".toString()
         ]
     }

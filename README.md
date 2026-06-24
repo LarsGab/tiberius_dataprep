@@ -61,13 +61,14 @@ echo 'export PATH="$PWD:$PATH"' >> ~/.bashrc
 
 Put matching pairs of genome FASTA and annotation files in **two separate directories**:
 
-| File            | Naming pattern                              |
-| --------------- | ------------------------------------------- |
-| Genome sequence | `<species_id>.genome.fa`                    |
-| Gene annotation | `<species_id>.gtf`, `.gff3`, or `.gff`      |
+| File            | Naming pattern                                       |
+| --------------- | ---------------------------------------------------- |
+| Genome sequence | `<species_id>.genome.fa`, `.fa`, or `.fasta`         |
+| Gene annotation | `<species_id>.gtf`, `.gff3`, or `.gff`               |
 
-The pipeline picks the annotation file by extension in that order. Non-GTF files
-are converted with `gffread -T` before further processing.
+For each species, the pipeline picks the first existing file in the listed
+order. Non-GTF annotations are converted with `gffread -T` before further
+processing.
 
 `<species_id>` is an arbitrary identifier (typically the Latin binomial—e.g. `arabidopsis_thaliana`) that must be identical for each matching pair. Every genome file must live in *one* directory (`genome_dir`) and every annotation file in *another* (`annot_dir`). 
 
@@ -122,8 +123,37 @@ The pipeline ships with a few ready-made profiles. Pick one with `-profile`:
 If your site is not one of these, copy `config/slurm_generic.config` to
 `config/slurm_<yoursite>.config`, edit the executor/queue/cpus/memory/time to your
 site's defaults, and add a matching entry to the `profiles { ... }` block in
-`nextflow.config`. Then run with `-profile slurm_<yoursite>`. No `-c` flag is
-needed — Nextflow auto-loads `nextflow.config` from the repo root.
+`nextflow.config`. Then run with `-profile slurm_<yoursite>`.
+
+#### Where you launch matters
+
+Nextflow only auto-loads `nextflow.config` from two places: the **current
+working directory**, and the directory **containing the pipeline script**.
+Our `nextflow.config` lives at the repo root, so you have two options:
+
+1. **Launch from the repo root** (auto-loaded, nothing extra needed):
+
+   ```bash
+   cd /path/to/tiberius_dataprep
+   nextflow run tiberius_dataprep/genome2tfrecords.nf \
+     -profile slurm_brain \
+     --config_yaml my_project/config.yaml ...
+   ```
+
+2. **Launch from anywhere with an explicit `-c`** (typical when your project
+   has its own working directory):
+
+   ```bash
+   cd /path/to/my_project
+   nextflow run /path/to/tiberius_dataprep/tiberius_dataprep/genome2tfrecords.nf \
+     -c /path/to/tiberius_dataprep/nextflow.config \
+     -profile slurm_brain \
+     --config_yaml config.yaml ...
+   ```
+
+If `-profile <name>` does not seem to take effect (you see
+`executor > local` instead of `slurm`, or no container is mounted),
+`nextflow.config` was not loaded — usually option (2) is the fix.
 
 ### Run the pipeline
 
