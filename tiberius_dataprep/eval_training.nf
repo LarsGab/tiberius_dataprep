@@ -174,10 +174,6 @@ process RUN_GFFCOMPARE {
       --strict-match -e 0 -T --no-merge \\
       ${gtf} \\
       -o ${idx}.${epochDir.name}.${speciesName}.stats
-    # Sleep a random time to avoid I/O contention
-    DELAY=\$(( RANDOM % 91 + 30 ))
-    echo "Sleeping \$DELAY seconds before letting Nextflow publishDir trigger..."
-    sleep \$DELAY
     """
 }
 

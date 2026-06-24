@@ -66,14 +66,10 @@ Channel
             error "No annotation file (.gtf, .gff or .gff3) found for ${sp} in ${ANNOT_DIR}"
         }
 
-        tuple( sp, spl, annotFile, 
+        tuple( sp, spl, annotFile,
             file("${GENOME_DIR}/${sp}.genome.fa") )
     })
     .set { META_CH }
-
-META_CH
-    .filter { species, split, annot, genome -> annot.name.endsWith('.gff3') }
-    .set { META_GFF3_CH }
 ////////////////////////////////////////////////////////////////////////
 //                            PROCESSES                               //
 ////////////////////////////////////////////////////////////////////////
@@ -171,39 +167,16 @@ process TFRECORD {
         tuple val(species), val(split), path(gtf), path(genome)
 
     output:
-	tuple val(species), val(split),
-              path('*.tfrecords'),
-              path("${species}_done.txt")
-
+        tuple val(species), val(split), path('*.tfrecords')
 
     script:
     """
-    write_tfrecord_species.py \
-        --wsize 9999 \
-        --gtf   ${gtf} \
-        --fasta ${genome} \
-        --out   ${species} \
+    write_tfrecord_species.py \\
+        --wsize 9999 \\
+        --gtf   ${gtf} \\
+        --fasta ${genome} \\
+        --out   ${species} \\
         --min_seq_len ${MIN_SEQ_LEN}
-
-    # Wait loop: allow file to actually appear on file system
-    for i in {1..120}; do
-    	ls *.tfrecords && break
-    	echo "Waiting for .tfrecords file to be written..."
-    	sleep 1
-    done
-
-    # Final existence check to catch failure early
-    if [ ! -f *.tfrecords ]; then
-       echo "ERROR: No .tfrecords file found after write_tfrecord_species.py"
-       exit 1
-       fi
-
-    # Sleep a random time to avoid I/O contention
-    DELAY=\$(( RANDOM % 91 + 30 ))
-    echo "Sleeping \$DELAY seconds before letting Nextflow publishDir trigger..."
-    sleep \$DELAY
-
-    touch ${species}_done.txt
     """
 }
 
@@ -235,22 +208,6 @@ EOF
 }
 
 
-process CLEANUP_TFRECORDS {
-    input:
-        tuple val(species), val(split), path(tfrecords), path(done)
-
-    output:
-        path("${species}_cleaned.txt")
-
-    script:
-    """
-    echo "Cleaned ${tfrecords}" > ${species}_cleaned.txt
-    """
-}
-
-
-
-
 
 ////////////////////////////////////////////////////////////////////////
 //                            WORKFLOW                                //
@@ -264,5 +221,5 @@ workflow {
         | GFF3_2_GTF                      \
         | REFORMAT_ANNOT                  \
         | LONGEST_ISOFORM                 \
-        | TFRECORD | CLEANUP_TFRECORDS
+        | TFRECORD
 }
