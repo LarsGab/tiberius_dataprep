@@ -26,7 +26,9 @@ nextflow -v
 echo 'export PATH="$PWD:$PATH"' >> ~/.bashrc
 ```
 
-**Adapt the `config/nextflow.config` to the specifics of your cluster.** Currently, the configuration is set for the BRAIN cluster at University Greifswald
+See *Choosing an execution profile* below for how to point the pipeline at your
+cluster. If your site is not one of the bundled profiles, you can add your own
+in a few lines.
 
 ### 2 · Install gffcompare
 
@@ -95,17 +97,37 @@ the weights you plan to train or evaluate. `gffread` is bundled in both images;
 To use a custom image (for example, your own build), override the image directly:
 `--container docker://your/image:tag`.
 
+### Choosing an execution profile
+
+The pipeline ships with a few ready-made profiles. Pick one with `-profile`:
+
+| Profile              | Where it runs                                                                |
+| -------------------- | ---------------------------------------------------------------------------- |
+| `test`               | Local, no container. For `-stub-run`, CI, and tiny end-to-end tests.         |
+| `local_docker`       | Your laptop, Docker.                                                         |
+| `local_singularity`  | Your workstation, Singularity.                                               |
+| `slurm_brain`        | BRAIN cluster (Univ. Greifswald), Singularity, GPU on `vision`.              |
+| `slurm_generic`      | Any Slurm cluster, Singularity. No queue or `clusterOptions` assumed.        |
+
+If your site is not one of these, copy `conf/slurm_generic.config` to
+`conf/slurm_<yoursite>.config`, edit the executor/queue/cpus/memory/time to your
+site's defaults, and add a matching entry to the `profiles { ... }` block in
+`nextflow.config`. Then run with `-profile slurm_<yoursite>`. No `-c` flag is
+needed — Nextflow auto-loads `nextflow.config` from the repo root.
+
 ### Run the pipeline
 
 ```bash
 nextflow run tiberius_dataprep/genome2tfrecords.nf \
-  -c config/nextflow.config \
+  -profile local_singularity \
   --configYAML config/config_dataprep.yaml \
   --tiberius_version 2.x \
   --resume
 ```
 
-> **On SLURM?** Submit above command as a batch job; the pipeline will distribute work across partitions automatically.
+> **On SLURM?** Submit the same command as a batch job, replacing
+> `local_singularity` with `slurm_brain` or `slurm_generic`. The pipeline will
+> fan out jobs across the cluster automatically.
 
 ### Outputs
 
@@ -175,7 +197,7 @@ weights trained with Tiberius 1.1.8, `2.x` for 2.0.6 — the default).
 
 ```bash
 nextflow run tiberius_dataprep/eval_training.nf \
-  -c config/nextflow.config \
+  -profile slurm_brain \
   --config config/config_train_eval.yaml \
   --tiberius_version 2.x \
   --resume
@@ -185,13 +207,15 @@ nextflow run tiberius_dataprep/eval_training.nf \
 
 ```bash
 nextflow run tiberius_dataprep/eval_training.nf \
-  -c config/nextflow.config \
+  -profile slurm_brain \
   --config config/config_train_eval.yaml \
   --tiberius_version 2.x \
   --resume --use_test
 ```
 
-> **SLURM users:** submit either command with `sbatch`; the workflow will fan out jobs across partitions automatically.
+> **SLURM users:** submit either command with `sbatch`. Pick the profile that
+> matches your site (`slurm_brain`, `slurm_generic`, or your own — see
+> *Choosing an execution profile* above).
 
 
 ### Outputs
