@@ -35,7 +35,7 @@ process RUN_TIBERIUS {
 
     publishDir { "${evalDir}/" }, mode: 'copy', pattern: '*.gtf'
 
-    container params.container
+    container { params.container }
     storeDir { "cache/${task.process}/${trainName}/${speciesName}/${idx}/${epochDir.name}/" }
     memory '190 GB'
     input:

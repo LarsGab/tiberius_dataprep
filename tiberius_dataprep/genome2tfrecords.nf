@@ -37,9 +37,9 @@ def tiberiusImage(String version) {
 ////////////////////////////////////////////////////////////////////////
 
 process GFF3_2_GTF {
-    tag "${species}"
-    container params.container
-    publishDir "${params.work_dir}/annot_gtf", mode: 'copy', pattern: '*.gtf'
+    tag { "${species}" }
+    container { params.container }
+    publishDir { "${params.work_dir}/annot_gtf" }, mode: 'copy', pattern: '*.gtf'
 
     cpus   1
     memory '4 GB'
@@ -66,9 +66,9 @@ process GFF3_2_GTF {
 
 
 process REFORMAT_ANNOT {
-    tag "${species}"
-    container params.container
-    publishDir "${params.work_dir}/annot_gtf", mode: 'copy', pattern: '*.gtf'
+    tag { "${species}" }
+    container { params.container }
+    publishDir { "${params.work_dir}/annot_gtf" }, mode: 'copy', pattern: '*.gtf'
 
     cpus   1
     memory '8 GB'
@@ -93,9 +93,9 @@ process REFORMAT_ANNOT {
 
 
 process LONGEST_ISOFORM {
-    tag "${species}"
-    container params.container
-    publishDir "${params.work_dir}/annot_gtf", mode: 'copy', pattern: '*.gtf'
+    tag { "${species}" }
+    container { params.container }
+    publishDir { "${params.work_dir}/annot_gtf" }, mode: 'copy', pattern: '*.gtf'
 
     cpus   1
     memory '4 GB'
@@ -116,10 +116,10 @@ process LONGEST_ISOFORM {
 
 
 process TFRECORD {
-    tag "${species}"
-    container params.container
-    storeDir "cache/TFRECORD/${split}"
-    publishDir "${params.work_dir}/tfrecords/${split}", mode: 'copy', pattern: '*.tfrecords'
+    tag { "${species}" }
+    container { params.container }
+    storeDir { "cache/TFRECORD/${split}" }
+    publishDir { "${params.work_dir}/tfrecords/${split}" }, mode: 'copy', pattern: '*.tfrecords'
 
     cpus   50
     memory '200 GB'
@@ -144,12 +144,12 @@ process TFRECORD {
 
 
 process WRITE_SPECIES_LIST {
-    tag "${split}"
-    container params.container
+    tag { "${split}" }
+    container { params.container }
     cpus   1
     memory '1 GB'
 
-    publishDir "${params.work_dir}/tfrecords/", mode: 'copy'
+    publishDir { "${params.work_dir}/tfrecords/" }, mode: 'copy'
 
     input:
         tuple val(split), path(cfg_yaml)
