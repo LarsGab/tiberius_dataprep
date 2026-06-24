@@ -35,7 +35,7 @@ Get version 0.12.6 from [GitHub](https://github.com/gpertea/gffcompare/releases/
 
 
 ```bash
-wget https://github.com/gpertea/gffcompare/releases/download/v0.12.9/gffcompare-0.12.6.Linux_x86_64.tar.gz
+wget https://github.com/gpertea/gffcompare/releases/download/v0.12.6/gffcompare-0.12.6.Linux_x86_64.tar.gz
 tar xzf gffcompare-0.12.6.Linux_x86_64.tar.gz
 cd gffcompare-0.12.6.Linux_x86_64
 export PATH="$(pwd):$PATH"

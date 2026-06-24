@@ -35,6 +35,7 @@ params.species_meta = dataSpecies.collect { speciesName, attrs ->
 }
 
 // 3) Scan all Training → WeightsDir → epoch_* subdirs to collect every epoch directory
+// epochInfoList rows: [ trainName, idx, epochDir (str), evalDir (str), hmmFlag ]
 def epochInfoList = []
 yamlConfig.Training.each { trainName, trainAttrs ->
 
@@ -42,20 +43,15 @@ yamlConfig.Training.each { trainName, trainAttrs ->
 
     if( params.use_test && trainAttrs.TestWeights ) {
         trainAttrs.TestWeights.each { twKey, twPathObj ->
-
-            def epochSubdir  = file(twPathObj).toString()               // epoch_* dir
-            def weightsDir = file(twPathObj).parent.toString()  // its parent
-            
             epochInfoList << [
                 trainName,
-                twKey,              // we’ll use the YAML key as “idx”
-                epochSubdir,             // epochDir
+                twKey,                              // YAML key used as idx
+                file(twPathObj).toString(),
                 trainAttrs.EvalDir.toString(),
-                weightsDir,         // weightsDirPath
                 hmmFlag
             ]
         }
-        return                                   // go to next trainName
+        return  // skip the WeightsDir loop for this trainName
     }
 
     trainAttrs.WeightsDir.each { idx, weightsDirPath ->
@@ -64,14 +60,13 @@ yamlConfig.Training.each { trainName, trainAttrs ->
             baseDir.listFiles()
                 .findAll { it.isDirectory() && it.name.startsWith('epoch_') }
                 .each { epochSubdir ->
-                    epochInfoList << [ 
-                        trainName, 
-                        idx, 
-                        epochSubdir.toString(), 
+                    epochInfoList << [
+                        trainName,
+                        idx,
+                        epochSubdir.toString(),
                         trainAttrs.EvalDir.toString(),
-                        weightsDirPath.toString(), 
                         hmmFlag
-                        ]
+                    ]
                 }
         }
     }
@@ -83,25 +78,23 @@ Channel
     .map { row -> tuple( row[0], file(row[1]), file(row[2]) ) }
     .set { SPECIES_META }
 
-// Channel of (trainName, idx, epochDirAsFile, evalDir)
+// Channel of (trainName, idx, epochDir, evalDir, hmmFlag)
 Channel
     .from(epochInfoList)
-    .map { trainEpochTuple ->
-        def (trainName, idx, epochPath, evalDir, weightsDirPath, hmmFlag) = trainEpochTuple
-        tuple(trainName, idx, file(epochPath), file(evalDir), file(weightsDirPath), hmmFlag)
+    .map { trainName, idx, epochPath, evalDir, hmmFlag ->
+        tuple(trainName, idx, file(epochPath), evalDir, hmmFlag)
     }
     .set { EPOCH_INFO }
 
 // Cross-join species metadata with every (trainName, epochDir)
 SPECIES_META
-    .combine( EPOCH_INFO )                        
-    .map { speciesName, genomeFa, annotGtf,        
-           trainName,  idx, epochDir, evalDir,
-           weightsDirPath, hmmFlag ->
+    .combine( EPOCH_INFO )
+    .map { speciesName, genomeFa, annotGtf,
+           trainName, idx, epochDir, evalDir, hmmFlag ->
 
         tuple(
             trainName, idx,
-            epochDir, evalDir, weightsDirPath, hmmFlag,
+            epochDir, evalDir, hmmFlag,
             speciesName, genomeFa, annotGtf
         )
     }
@@ -114,18 +107,17 @@ SPECIES_META
 process RUN_TIBERIUS {
     label 'gpu'
 
-    publishDir {"${evalDir}/"}, mode:'copy', pattern: '*.gtf'
+    publishDir { "${evalDir}/" }, mode: 'copy', pattern: '*.gtf'
 
     container params.container
-    storeDir "cache/${task.process}/${trainName}/"
+    storeDir { "cache/${task.process}/${trainName}/${speciesName}/${idx}/${epochDir.name}/" }
     memory '190 GB'
     input:
         tuple(
-            val(trainName),  
-            val(idx), 
-            path(epochDir), 
+            val(trainName),
+            val(idx),
+            path(epochDir),
             val(evalDir),
-            path(weightsDirPath),
             val(hmmFlag),
             val(speciesName),
             path(genomeFa),
@@ -133,24 +125,22 @@ process RUN_TIBERIUS {
         )
 
     output:
-        // emit the metadata *together with* the resulting GTF
-        tuple (
-            path("${idx}.${epochDir}.${speciesName}.gtf"),
-            val(trainName),  
-            val(idx), 
-            path(epochDir), 
+        tuple(
+            path("${idx}.${epochDir.name}.${speciesName}.gtf"),
+            val(trainName),
+            val(idx),
+            path(epochDir),
             val(evalDir),
-            path(weightsDirPath),
             val(speciesName),
             path(annotGtf)
         )
 
     script:
     """
-    tiberius.py \
-        --genome ${genomeFa} \
-        ${hmmFlag ? '--model_old' : '--model_lstm_old'} ${weightsDirPath}/${epochDir} \
-        --out ${idx}.${epochDir}.${speciesName}.gtf
+    tiberius.py \\
+        --genome ${genomeFa} \\
+        ${hmmFlag ? '--model_old' : '--model_lstm_old'} ${epochDir} \\
+        --out ${idx}.${epochDir.name}.${speciesName}.gtf
     """
 }
 
@@ -159,32 +149,31 @@ process RUN_TIBERIUS {
 //--------------------------------------------------------------------------
 process RUN_GFFCOMPARE {
 
-    publishDir {"${evalDir}/"}, mode:'copy', pattern: '*.stats'
-    storeDir "cache/${task.process}/${trainName}/"
+    publishDir { "${evalDir}/" }, mode: 'copy', pattern: '*.stats'
+    storeDir { "cache/${task.process}/${trainName}/${speciesName}/${idx}/${epochDir.name}/" }
 
     input:
-        tuple (
+        tuple(
             path(gtf),
-            val(trainName),  
-            val(idx), 
-            path(epochDir), 
+            val(trainName),
+            val(idx),
+            path(epochDir),
             val(evalDir),
-            path(weightsDirPath),
             val(speciesName),
             path(annotGtf)
         )
 
     output:
-        path "${idx}.${epochDir}.${speciesName}.stats"
+        path "${idx}.${epochDir.name}.${speciesName}.stats"
 
     script:
     """
     grep CDS ${annotGtf} > annot_cds.gtf
-    gffcompare \
-      -r annot_cds.gtf \
-      --strict-match -e 0 -T --no-merge \
-      ${gtf} \
-      -o ${idx}.${epochDir}.${speciesName}.stats
+    gffcompare \\
+      -r annot_cds.gtf \\
+      --strict-match -e 0 -T --no-merge \\
+      ${gtf} \\
+      -o ${idx}.${epochDir.name}.${speciesName}.stats
     # Sleep a random time to avoid I/O contention
     DELAY=\$(( RANDOM % 91 + 30 ))
     echo "Sleeping \$DELAY seconds before letting Nextflow publishDir trigger..."

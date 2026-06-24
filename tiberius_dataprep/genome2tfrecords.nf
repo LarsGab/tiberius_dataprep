@@ -55,7 +55,7 @@ Channel
         } else if (gff3File.exists()) {
             annotFile = gff3File
         } else if (gffFile.exists()) {
-            annotFile = gff3File
+            annotFile = gffFile
         } else {
             error "No annotation file (.gtf, .gff or .gff3) found for ${sp} in ${ANNOT_DIR}"
         }
