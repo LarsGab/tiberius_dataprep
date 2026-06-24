@@ -10,7 +10,14 @@ nextflow.enable.dsl = 2
 //                     PARAMETERS & CONFIG                             //
 ////////////////////////////////////////////////////////////////////////
 
-params.container   = 'docker://larsgabriel23/tiberius:dev'
+// Supported Tiberius versions -> pinned container tag.
+// Override the whole image with --container docker://my/image:tag if needed.
+def TIBERIUS_TAG_FOR = [ '1.x': '1.1.8', '2.x': '2.0.6' ]
+params.tiberius_version = '2.x'
+if (!TIBERIUS_TAG_FOR.containsKey(params.tiberius_version)) {
+    error "params.tiberius_version must be one of ${TIBERIUS_TAG_FOR.keySet()} (got '${params.tiberius_version}')"
+}
+params.container   = "docker://larsgabriel23/tiberius:${TIBERIUS_TAG_FOR[params.tiberius_version]}"
 params.configYAML  = "../config/config_dataprep.yaml"
 
 import groovy.yaml.YamlSlurper
@@ -67,7 +74,8 @@ META_CH
 
 process GFF3_2_GTF {
     tag "${species}"
-    publishDir "${OUT_DIR}/annot_gtf", mode: 'copy', pattern: '*.gtf'  
+    container params.container
+    publishDir "${OUT_DIR}/annot_gtf", mode: 'copy', pattern: '*.gtf'
 
     cpus   1
     memory '4 GB'

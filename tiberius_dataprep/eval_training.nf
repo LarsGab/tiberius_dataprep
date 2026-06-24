@@ -5,7 +5,14 @@
 
 nextflow.enable.dsl = 2
 
-params.container   = 'docker://larsgabriel23/tiberius:dev'
+// Supported Tiberius versions -> pinned container tag.
+// Override the whole image with --container docker://my/image:tag if needed.
+def TIBERIUS_TAG_FOR = [ '1.x': '1.1.8', '2.x': '2.0.6' ]
+params.tiberius_version = '2.x'
+if (!TIBERIUS_TAG_FOR.containsKey(params.tiberius_version)) {
+    error "params.tiberius_version must be one of ${TIBERIUS_TAG_FOR.keySet()} (got '${params.tiberius_version}')"
+}
+params.container   = "docker://larsgabriel23/tiberius:${TIBERIUS_TAG_FOR[params.tiberius_version]}"
 params.config      = '../config/config_train_eval.yaml'
 
 import groovy.yaml.YamlSlurper

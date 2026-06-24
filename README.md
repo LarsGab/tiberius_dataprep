@@ -80,12 +80,28 @@ annot_dir:  /data/annotations           # directory with *.gff3
 min_seq_len: 500000 # minimum sequence length of genome FASTA files used for training
 ```
 
+### Choose a Tiberius version
+
+The pipeline runs inside a pinned Singularity image. Use the version that matches
+the weights you plan to train or evaluate. `gffread` is bundled in both images;
+`gffcompare` (used only by `eval_training.nf`) stays a host dependency — see
+*Installation* above.
+
+| `--tiberius_version` | Image                                       |
+| -------------------- | ------------------------------------------- |
+| `2.x` *(default)*    | `docker://larsgabriel23/tiberius:2.0.6`     |
+| `1.x`                | `docker://larsgabriel23/tiberius:1.1.8`     |
+
+To use a custom image (for example, your own build), override the image directly:
+`--container docker://your/image:tag`.
+
 ### Run the pipeline
 
 ```bash
 nextflow run tiberius_dataprep/genome2tfrecords.nf \
   -c config/nextflow.config \
   --configYAML config/config_dataprep.yaml \
+  --tiberius_version 2.x \
   --resume
 ```
 
@@ -152,12 +168,16 @@ Training:
       Null
 ```
 
+Set `--tiberius_version` to the version that produced the weights (`1.x` for
+weights trained with Tiberius 1.1.8, `2.x` for 2.0.6 — the default).
+
 ### Run validation
 
 ```bash
 nextflow run tiberius_dataprep/eval_training.nf \
   -c config/nextflow.config \
   --config config/config_train_eval.yaml \
+  --tiberius_version 2.x \
   --resume
 ```
 
@@ -166,7 +186,8 @@ nextflow run tiberius_dataprep/eval_training.nf \
 ```bash
 nextflow run tiberius_dataprep/eval_training.nf \
   -c config/nextflow.config \
-  --configFile config/config_train_eval.yaml \
+  --config config/config_train_eval.yaml \
+  --tiberius_version 2.x \
   --resume --use_test
 ```
 
