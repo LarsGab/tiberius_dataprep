@@ -2,71 +2,36 @@
 nextflow.enable.dsl = 2
 
 /*
- * Pipeline: GFF3 → TFRecord split by species
- * Updated: 2025-05-15
+ * Pipeline: GFF3 -> TFRecord split by species
  */
 
 ////////////////////////////////////////////////////////////////////////
-//                     PARAMETERS & CONFIG                             //
+//                     PARAMETER DEFAULTS                              //
 ////////////////////////////////////////////////////////////////////////
 
-// Supported Tiberius versions -> pinned container tag.
 // Override the whole image with --container docker://my/image:tag if needed.
-def TIBERIUS_TAG_FOR = [ '1.x': '1.1.8', '2.x': '2.0.6' ]
 params.tiberius_version = '2.x'
-if (!TIBERIUS_TAG_FOR.containsKey(params.tiberius_version)) {
-    error "params.tiberius_version must be one of ${TIBERIUS_TAG_FOR.keySet()} (got '${params.tiberius_version}')"
-}
-params.container   = "docker://larsgabriel23/tiberius:${TIBERIUS_TAG_FOR[params.tiberius_version]}"
-params.config_yaml  = "../config/config.yaml"
-
-def cfg       = new groovy.yaml.YamlSlurper().parseText( file(params.config_yaml).text )
-def ANNOT_DIR = cfg.annot_dir   as String
-def GENOME_DIR= cfg.genome_dir  as String
-def OUT_DIR   = cfg.work_dir    as String
-// Minimum genome sequence length (in bp) eligible for training.
-// Sequences shorter than this are filtered out before being chunked.
-def MIN_SEQ_LEN = cfg.min_seq_len ?: 500000
-// Size (in bp) of each TFRecord chunk written from a genome sequence.
-// Forwarded to write_tfrecord_species.py as --wsize.
-def CHUNK_SIZE  = cfg.chunk_size  ?: 9999
-def CFG_CH = Channel.value( file(params.config_yaml) )
+params.container        = null    // resolved in workflow
+params.config_yaml      = "../config/config.yaml"
+// Filled from the YAML in the workflow body; declared here so processes can
+// reference params.X via lazy evaluation in their directives.
+params.work_dir         = null
+params.annot_dir        = null
+params.genome_dir       = null
+params.min_seq_len      = null
+params.chunk_size       = null
 
 ////////////////////////////////////////////////////////////////////////
-//                      BUILD META CHANNEL                            //
+//                            HELPERS                                  //
 ////////////////////////////////////////////////////////////////////////
 
-def speciesToSplit = [:]
-['train','val','test'].each { split ->
-    cfg.species_split[split].each { sp -> speciesToSplit[sp] = split }
+def tiberiusImage(String version) {
+    def tagFor = [ '1.x': '1.1.8', '2.x': '2.0.6' ]
+    if (!tagFor.containsKey(version))
+        error "params.tiberius_version must be one of ${tagFor.keySet()} (got '${version}')"
+    return "docker://larsgabriel23/tiberius:${tagFor[version]}"
 }
 
-Channel
-    .of('train','val','test')
-    .combine(CFG_CH)      
-    .set   { SPECIES_LIST_CH }         // (split , cfg_yaml)
-
-Channel
-    .from( speciesToSplit.collect { sp, spl ->
-        def gtfFile  = file("${ANNOT_DIR}/${sp}.gtf")
-        def gff3File = file("${ANNOT_DIR}/${sp}.gff3")
-        def gffFile = file("${ANNOT_DIR}/${sp}.gff")
-
-        def annotFile
-        if (gtfFile.exists()) {
-            annotFile = gtfFile
-        } else if (gff3File.exists()) {
-            annotFile = gff3File
-        } else if (gffFile.exists()) {
-            annotFile = gffFile
-        } else {
-            error "No annotation file (.gtf, .gff or .gff3) found for ${sp} in ${ANNOT_DIR}"
-        }
-
-        tuple( sp, spl, annotFile,
-            file("${GENOME_DIR}/${sp}.genome.fa") )
-    })
-    .set { META_CH }
 ////////////////////////////////////////////////////////////////////////
 //                            PROCESSES                               //
 ////////////////////////////////////////////////////////////////////////
@@ -74,7 +39,7 @@ Channel
 process GFF3_2_GTF {
     tag "${species}"
     container params.container
-    publishDir "${OUT_DIR}/annot_gtf", mode: 'copy', pattern: '*.gtf'
+    publishDir "${params.work_dir}/annot_gtf", mode: 'copy', pattern: '*.gtf'
 
     cpus   1
     memory '4 GB'
@@ -103,7 +68,7 @@ process GFF3_2_GTF {
 process REFORMAT_ANNOT {
     tag "${species}"
     container params.container
-    publishDir "${OUT_DIR}/annot_gtf", mode: 'copy', pattern: '*.gtf'  
+    publishDir "${params.work_dir}/annot_gtf", mode: 'copy', pattern: '*.gtf'
 
     cpus   1
     memory '8 GB'
@@ -115,13 +80,13 @@ process REFORMAT_ANNOT {
         tuple val(species), val(split),
                 path("${species}_reformat.gtf"),
                 path(genome)
-        
+
 
     script:
     """
-    reformat_gtf.py \
-        --input ${gtf} \
-        --out   ${species}_reformat.gtf \
+    reformat_gtf.py \\
+        --input ${gtf} \\
+        --out   ${species}_reformat.gtf \\
         --prefix ${species}_
     """
 }
@@ -130,7 +95,7 @@ process REFORMAT_ANNOT {
 process LONGEST_ISOFORM {
     tag "${species}"
     container params.container
-    publishDir "${OUT_DIR}/annot_gtf", mode: 'copy', pattern: '*.gtf'  
+    publishDir "${params.work_dir}/annot_gtf", mode: 'copy', pattern: '*.gtf'
 
     cpus   1
     memory '4 GB'
@@ -154,7 +119,7 @@ process TFRECORD {
     tag "${species}"
     container params.container
     storeDir "cache/TFRECORD/${split}"
-    publishDir "${OUT_DIR}/tfrecords/${split}", mode: 'copy', pattern: '*.tfrecords'
+    publishDir "${params.work_dir}/tfrecords/${split}", mode: 'copy', pattern: '*.tfrecords'
 
     cpus   50
     memory '200 GB'
@@ -169,11 +134,11 @@ process TFRECORD {
     script:
     """
     write_tfrecord_species.py \\
-        --wsize ${CHUNK_SIZE} \\
+        --wsize ${params.chunk_size} \\
         --gtf   ${gtf} \\
         --fasta ${genome} \\
         --out   ${species} \\
-        --min_seq_len ${MIN_SEQ_LEN}
+        --min_seq_len ${params.min_seq_len}
     """
 }
 
@@ -184,7 +149,7 @@ process WRITE_SPECIES_LIST {
     cpus   1
     memory '1 GB'
 
-    publishDir "${OUT_DIR}/tfrecords/", mode: 'copy'
+    publishDir "${params.work_dir}/tfrecords/", mode: 'copy'
 
     input:
         tuple val(split), path(cfg_yaml)
@@ -206,16 +171,59 @@ EOF
 }
 
 
-
 ////////////////////////////////////////////////////////////////////////
 //                            WORKFLOW                                //
 ////////////////////////////////////////////////////////////////////////
 
 workflow {
 
-    SPECIES_LIST_CH  | WRITE_SPECIES_LIST
+    // Resolve container from tiberius_version unless the user pinned it.
+    if (!params.container) {
+        params.container = tiberiusImage(params.tiberius_version)
+    }
 
-    META_CH                               \
+    // Load YAML config and promote fields to params so processes can read them.
+    def cfg = new groovy.yaml.YamlSlurper().parseText( file(params.config_yaml).text )
+    params.work_dir    = cfg.work_dir   as String
+    params.annot_dir   = cfg.annot_dir  as String
+    params.genome_dir  = cfg.genome_dir as String
+    params.min_seq_len = (cfg.min_seq_len ?: 500000) as Integer
+    params.chunk_size  = (cfg.chunk_size  ?: 9999)   as Integer
+
+    // species -> split lookup
+    def speciesToSplit = [:]
+    ['train','val','test'].each { split ->
+        (cfg.species_split[split] ?: []).each { sp -> speciesToSplit[sp] = split }
+    }
+
+    // (split, cfg_yaml) channel for WRITE_SPECIES_LIST
+    def cfgCh = Channel.value(file(params.config_yaml))
+    def speciesListCh = Channel.of('train','val','test').combine(cfgCh)
+
+    // (species, split, annotFile, genomeFa) channel for the main chain
+    def metaCh = Channel.from(speciesToSplit.collect { sp, spl ->
+        def gtfFile  = file("${params.annot_dir}/${sp}.gtf")
+        def gff3File = file("${params.annot_dir}/${sp}.gff3")
+        def gffFile  = file("${params.annot_dir}/${sp}.gff")
+
+        def annotFile
+        if (gtfFile.exists()) {
+            annotFile = gtfFile
+        } else if (gff3File.exists()) {
+            annotFile = gff3File
+        } else if (gffFile.exists()) {
+            annotFile = gffFile
+        } else {
+            error "No annotation file (.gtf, .gff or .gff3) found for ${sp} in ${params.annot_dir}"
+        }
+
+        tuple( sp, spl, annotFile,
+            file("${params.genome_dir}/${sp}.genome.fa") )
+    })
+
+    speciesListCh | WRITE_SPECIES_LIST
+
+    metaCh                                \
         | GFF3_2_GTF                      \
         | REFORMAT_ANNOT                  \
         | LONGEST_ISOFORM                 \
