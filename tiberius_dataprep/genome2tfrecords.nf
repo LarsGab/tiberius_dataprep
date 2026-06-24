@@ -11,15 +11,10 @@ nextflow.enable.dsl = 2
 
 // Override the whole image with --container docker://my/image:tag if needed.
 params.tiberius_version = '2.x'
-params.container        = null    // resolved in workflow
 params.config_yaml      = "../config/config.yaml"
-// Filled from the YAML in the workflow body; declared here so processes can
-// reference params.X via lazy evaluation in their directives.
-params.work_dir         = null
-params.annot_dir        = null
-params.genome_dir       = null
-params.min_seq_len      = null
-params.chunk_size       = null
+// NB: do NOT declare YAML-derived params here. In Nextflow 26 the first
+// assignment to a param wins; setting them to null at top level would
+// silently shadow the values the workflow loads from the YAML.
 
 ////////////////////////////////////////////////////////////////////////
 //                            HELPERS                                  //
@@ -182,13 +177,15 @@ workflow {
         params.container = tiberiusImage(params.tiberius_version)
     }
 
-    // Load YAML config and promote fields to params so processes can read them.
+    // Load YAML config. Each assignment is guarded so CLI overrides win.
     def cfg = new groovy.yaml.YamlSlurper().parseText( file(params.config_yaml).text )
-    params.work_dir    = cfg.work_dir   as String
-    params.annot_dir   = cfg.annot_dir  as String
-    params.genome_dir  = cfg.genome_dir as String
-    params.min_seq_len = (cfg.min_seq_len ?: 500000) as Integer
-    params.chunk_size  = (cfg.chunk_size  ?: 9999)   as Integer
+    if (!params.work_dir)          params.work_dir    = cfg.work_dir   as String
+    if (params.min_seq_len == null) params.min_seq_len = (cfg.min_seq_len ?: 500000) as Integer
+    if (params.chunk_size  == null) params.chunk_size  = (cfg.chunk_size  ?: 9999)   as Integer
+
+    // Only needed inside this workflow body, so kept as locals.
+    def ANNOT_DIR  = (params.annot_dir  ?: cfg.annot_dir)  as String
+    def GENOME_DIR = (params.genome_dir ?: cfg.genome_dir) as String
 
     // species -> split lookup
     def speciesToSplit = [:]
@@ -202,9 +199,9 @@ workflow {
 
     // (species, split, annotFile, genomeFa) channel for the main chain
     def metaCh = Channel.from(speciesToSplit.collect { sp, spl ->
-        def gtfFile  = file("${params.annot_dir}/${sp}.gtf")
-        def gff3File = file("${params.annot_dir}/${sp}.gff3")
-        def gffFile  = file("${params.annot_dir}/${sp}.gff")
+        def gtfFile  = file("${ANNOT_DIR}/${sp}.gtf")
+        def gff3File = file("${ANNOT_DIR}/${sp}.gff3")
+        def gffFile  = file("${ANNOT_DIR}/${sp}.gff")
 
         def annotFile
         if (gtfFile.exists()) {
@@ -214,11 +211,11 @@ workflow {
         } else if (gffFile.exists()) {
             annotFile = gffFile
         } else {
-            error "No annotation file (.gtf, .gff or .gff3) found for ${sp} in ${params.annot_dir}"
+            error "No annotation file (.gtf, .gff or .gff3) found for ${sp} in ${ANNOT_DIR}"
         }
 
         tuple( sp, spl, annotFile,
-            file("${params.genome_dir}/${sp}.genome.fa") )
+            file("${GENOME_DIR}/${sp}.genome.fa") )
     })
 
     speciesListCh | WRITE_SPECIES_LIST

@@ -11,9 +11,10 @@ nextflow.enable.dsl = 2
 
 // Override the whole image with --container docker://my/image:tag if needed.
 params.tiberius_version = '2.x'
-params.container        = null    // resolved in workflow
 params.config_yaml      = '../config/config.yaml'
 params.use_test         = false
+// NB: do NOT declare params.container at top level. In Nextflow 26 the first
+// assignment wins, so a null default would shadow the workflow's resolution.
 
 ////////////////////////////////////////////////////////////////////////
 //                            HELPERS                                  //
