@@ -67,10 +67,19 @@ process RUN_TIBERIUS {
         )
 
     script:
+    // Tiberius 2.x: --model loads from an epoch directory (model_config.json
+    // + model.weights.h5); HMM presence is encoded in the config.
+    // Tiberius 1.x: --model_lstm_old / --model_old load legacy SavedModel dirs.
+    def modelFlag
+    if (params.tiberius_version == '1.x') {
+        modelFlag = hmmFlag ? '--model_old' : '--model_lstm_old'
+    } else {
+        modelFlag = '--model'
+    }
     """
     tiberius.py \\
         --genome ${genomeFa} \\
-        ${hmmFlag ? '--model_old' : '--model_lstm_old'} ${epochDir} \\
+        ${modelFlag} ${epochDir} \\
         --out ${idx}.${epochDir.name}.${speciesName}.gtf
     """
 }
