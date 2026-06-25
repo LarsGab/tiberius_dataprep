@@ -119,7 +119,7 @@ workflow {
     def GENOME_DIR = cfg.genome_dir as String
     def WORK_DIR   = cfg.work_dir   as String
     def splitName  = params.use_test ? 'test' : 'val'
-    def speciesList = cfg.species_split?."${splitName}" ?: []
+    def speciesList = (cfg.species_split ?: [:])[splitName] ?: []
 
     if( !speciesList )
         error "species_split.${splitName} is empty or missing in ${params.config_yaml}"
