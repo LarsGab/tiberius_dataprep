@@ -190,11 +190,18 @@ workflow {
     def ANNOT_DIR  = (params.annot_dir  ?: cfg.annot_dir)  as String
     def GENOME_DIR = (params.genome_dir ?: cfg.genome_dir) as String
 
-    // species -> split lookup
-    def speciesToSplit = [:]
+    // species -> split lookup. Validate that no species appears in more than
+    // one split (or more than once within a split).
+    def speciesSplits = [:].withDefault { [] }
     ['train','val','test'].each { split ->
-        (cfg.species_split[split] ?: []).each { sp -> speciesToSplit[sp] = split }
+        (cfg.species_split[split] ?: []).each { sp -> speciesSplits[sp] << split }
     }
+    def duplicates = speciesSplits.findAll { sp, splits -> splits.size() > 1 }
+    if (duplicates) {
+        def lines = duplicates.collect { sp, splits -> "  ${sp}: ${splits.join(', ')}" }
+        error "species_split has species appearing more than once:\n${lines.join('\n')}\nEach species must appear in exactly one split (train, val, or test)."
+    }
+    def speciesToSplit = speciesSplits.collectEntries { sp, splits -> [(sp): splits[0]] }
 
     // (split, cfg_yaml) channel for WRITE_SPECIES_LIST
     def cfgCh = Channel.value(file(params.config_yaml))
