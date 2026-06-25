@@ -116,7 +116,6 @@ process LONGEST_ISOFORM {
 process TFRECORD {
     tag { "${species}" }
     container { params.container }
-    storeDir { "cache/TFRECORD/${split}" }
     publishDir { "${params.work_dir}/tfrecords/${split}" }, mode: 'copy', pattern: '*.tfrecords'
 
     cpus   50
