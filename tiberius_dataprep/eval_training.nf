@@ -32,6 +32,17 @@ def tiberiusImage(String version) {
     return "docker://larsgabriel23/tiberius:${tagFor[version]}"
 }
 
+// Probe an epoch directory and return:
+//   'new' -- new layout with model_config.json + weights.h5 / model.weights.h5
+//   'old' -- legacy SavedModel layout with saved_model.pb + variables/
+// Errors out if neither marker is present.
+def detectModelFormat(epochDir) {
+    def dir = epochDir instanceof File ? epochDir : new File(epochDir.toString())
+    if (new File(dir, 'model_config.json').exists()) return 'new'
+    if (new File(dir, 'saved_model.pb').exists())    return 'old'
+    error "Cannot determine model format for ${dir}: expected either 'model_config.json' (new layout) or 'saved_model.pb' (old SavedModel layout)."
+}
+
 ////////////////////////////////////////////////////////////////////////
 //                            PROCESSES                               //
 ////////////////////////////////////////////////////////////////////////
@@ -52,6 +63,7 @@ process RUN_TIBERIUS {
             path(epochDir),
             val(evalDir),
             val(hmmFlag),
+            val(modelFormat),
             val(speciesName),
             path(genomeFa),
             path(annotGtf)
@@ -69,14 +81,14 @@ process RUN_TIBERIUS {
         )
 
     script:
-    // Tiberius 2.x: --model loads from an epoch directory (model_config.json
-    // + model.weights.h5); HMM presence is encoded in the config.
-    // Tiberius 1.x: --model_lstm_old / --model_old load legacy SavedModel dirs.
+    // Pick the Tiberius flag from the epoch directory layout (see
+    // detectModelFormat). HMM presence in 'new' layouts is encoded in
+    // model_config.json, so the hmm flag only matters for legacy dirs.
     def modelFlag
-    if (params.tiberius_version == '1.x') {
-        modelFlag = hmmFlag ? '--model_old' : '--model_lstm_old'
-    } else {
+    if (modelFormat == 'new') {
         modelFlag = '--model'
+    } else {
+        modelFlag = hmmFlag ? '--model_old' : '--model_lstm_old'
     }
     """
     tiberius.py \\
@@ -193,7 +205,8 @@ workflow {
         ]
     }
 
-    // epochInfoList rows: [ trainName, idx, epochDir (str), evalDir (str), hmmFlag ]
+    // epochInfoList rows: [ trainName, idx, epochDir, evalDir, hmmFlag, modelFormat ]
+    // modelFormat is 'new' or 'old', auto-detected from the directory contents.
     def epochInfoList = []
     cfg.training.each { trainName, trainAttrs ->
 
@@ -204,12 +217,14 @@ workflow {
 
         if( params.use_test ) {
             (trainAttrs.test_weights ?: []).eachWithIndex { twPath, i ->
+                def epochDir = file(twPath)
                 epochInfoList << [
                     trainName,
                     "test_${i}",
-                    file(twPath).toString(),
+                    epochDir.toString(),
                     evalDir,
-                    hmmFlag
+                    hmmFlag,
+                    detectModelFormat(epochDir)
                 ]
             }
             return  // skip the weights_dirs scan for this trainName
@@ -226,7 +241,8 @@ workflow {
                             idx,
                             epochSubdir.toString(),
                             evalDir,
-                            hmmFlag
+                            hmmFlag,
+                            detectModelFormat(epochSubdir)
                         ]
                     }
             }
@@ -239,18 +255,18 @@ workflow {
 
     def epochInfoCh = Channel
         .from(epochInfoList)
-        .map { trainName, idx, epochPath, evalDir, hmmFlag ->
-            tuple(trainName, idx, file(epochPath), evalDir, hmmFlag)
+        .map { trainName, idx, epochPath, evalDir, hmmFlag, modelFormat ->
+            tuple(trainName, idx, file(epochPath), evalDir, hmmFlag, modelFormat)
         }
 
     def jobInputs = speciesMetaCh
         .combine( epochInfoCh )
         .map { speciesName, genomeFa, annotGtf,
-               trainName, idx, epochDir, evalDir, hmmFlag ->
+               trainName, idx, epochDir, evalDir, hmmFlag, modelFormat ->
 
             tuple(
                 trainName, idx,
-                epochDir, evalDir, hmmFlag,
+                epochDir, evalDir, hmmFlag, modelFormat,
                 speciesName, genomeFa, annotGtf
             )
         }
