@@ -2,6 +2,11 @@
 
 This document describes the workflow used to create the Mammalian and Eudicot weights for Tiberius and serves as a default strategy for training a new clade.
 
+> **Note.** This file is a clade-specific narrative for the eudicot
+> training run. The authoritative, up-to-date Tiberius training workflow lives
+> upstream at
+> [Gaius-Augustus/Tiberius docs/training_large_data.md](https://github.com/Gaius-Augustus/Tiberius/blob/main/docs/training_large_data.md).
+> When upstream and this document conflict, trust upstream.
 
 Training consits of 3 steps:
 1. Data preparation – convert genomes + annotations into TFRecords.

@@ -181,6 +181,20 @@ At `output_dir` the workflow produces two sub‑directories:
 | `tfrecords/` | `train/<species_id>_*.tfrecords` & `train/species.txt` | Sharded TFRecord files for training Tiberius
 
 
+## Training Tiberius
+
+`tiberius_dataprep` only **prepares training data** and **evaluates trained
+checkpoints**. The actual training (CNN+LSTM, HMM finetune, masking, multi-GPU,
+etc.) is run with the upstream Tiberius tools. See the maintained Tiberius
+training guide for the full workflow:
+
+- [Tiberius — Recommended Workflow for Training with a Large Dataset](https://github.com/Gaius-Augustus/Tiberius/blob/main/docs/training_large_data.md)
+
+The training step consumes the `tfrecords/` directory and `train/species.txt`
+produced above. Once you have epoch checkpoints under some `train_dir/`,
+point [`eval_training.nf`](#exon-and-transcript-level-evaluation-of-training-runs)
+at it via `training.<name>.weights_dirs` in `config.yaml`.
+
 ## Exon‑ and Transcript‑level Evaluation of Training Runs
 
 The pipeline provides two evaluation phases:
