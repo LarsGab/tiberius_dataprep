@@ -90,10 +90,24 @@ process RUN_TIBERIUS {
     } else {
         modelFlag = hmmFlag ? '--model_old' : '--model_lstm_old'
     }
+    // Tiberius 1.1.8's --model loader hard-codes 'weights.h5'. New-layout
+    // checkpoints use 'model.weights.h5' (2.0.6 has a fallback; 1.1.8
+    // doesn't). Build a writable mirror of the epoch dir with symlinks
+    // and add the missing alias. No-op if weights.h5 already exists.
     """
+    local_model=_model_${epochDir.name}
+    mkdir -p "\$local_model"
+    for f in ${epochDir}/*; do
+        [ -e "\$f" ] || continue
+        ln -sf "\$(readlink -f "\$f")" "\$local_model/"
+    done
+    if [ ! -e "\$local_model/weights.h5" ] && [ -e "\$local_model/model.weights.h5" ]; then
+        ( cd "\$local_model" && ln -sf model.weights.h5 weights.h5 )
+    fi
+
     tiberius.py \\
         --genome ${genomeFa} \\
-        ${modelFlag} ${epochDir} \\
+        ${modelFlag} "\$local_model" \\
         --out ${idx}.${epochDir.name}.${speciesName}.gtf
     """
 }
