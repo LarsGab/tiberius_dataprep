@@ -92,17 +92,17 @@ process RUN_TIBERIUS {
     }
     // Tiberius 1.1.8's --model loader hard-codes 'weights.h5'. New-layout
     // checkpoints use 'model.weights.h5' (2.0.6 has a fallback; 1.1.8
-    // doesn't). Build a writable mirror of the epoch dir with symlinks
-    // and add the missing alias. No-op if weights.h5 already exists.
+    // doesn't). Make a local copy of the epoch dir (so we don't touch the
+    // user's original) and rename model.weights.h5 -> weights.h5 if needed.
+    // We copy rather than symlink because absolute symlink targets are not
+    // always visible inside the Singularity container's bind set.
     """
     local_model=_model_${epochDir.name}
+    rm -rf "\$local_model"
     mkdir -p "\$local_model"
-    for f in ${epochDir}/*; do
-        [ -e "\$f" ] || continue
-        ln -sf "\$(readlink -f "\$f")" "\$local_model/"
-    done
+    cp -rL ${epochDir}/. "\$local_model/"
     if [ ! -e "\$local_model/weights.h5" ] && [ -e "\$local_model/model.weights.h5" ]; then
-        ( cd "\$local_model" && ln -sf model.weights.h5 weights.h5 )
+        mv "\$local_model/model.weights.h5" "\$local_model/weights.h5"
     fi
 
     tiberius.py \\
