@@ -10,9 +10,11 @@ The pipelines need three things on the host: Nextflow, a container runtime
 Everything else — Python, TensorFlow, Tiberius itself, `gffread` — lives inside
 the pinned container.
 
-> You do **not** need to `pip install .` to run the pipelines or open
-> `plot_acc.ipynb`. A Python install is only required to run the unit tests
-> (see *Running the tests* at the bottom of this file).
+> Install the host-side Python deps once with `pip install -e .` from the
+> repo root. `pyproject.toml` pins `matplotlib`, `pyyaml`, `scipy`, and
+> `biopython`; the eval pipeline's `PLOT_EVAL` step uses them on the host
+> (the Tiberius container doesn't ship `matplotlib`). For `pytest`, add the
+> `[test]` extra — see *Running the tests* below.
 
 ### 1 · Install Nextflow
 
@@ -267,6 +269,20 @@ For each training run, the pipeline produces in the specified `eval_dir/`:
 The pipeline runs [`tiberius_dataprep/bin/plot_eval.py`](tiberius_dataprep/bin/plot_eval.py)
 as a final step and writes the PNG above into each run's `eval_dir/`. You can
 also invoke it manually to re-plot with different filters:
+
+> The `PLOT_EVAL` step runs on the **host Python environment**, not inside
+> the Tiberius container (which doesn't ship `matplotlib`). Install the
+> plotting deps once from the repo root before running the pipeline:
+>
+> ```bash
+> pip install -e .
+> ```
+>
+> This pulls `matplotlib`, `pyyaml`, `scipy`, and `biopython` from
+> `pyproject.toml`. On a Slurm cluster, install into an environment that
+> is also visible to the compute nodes (e.g. a conda env on a shared
+> filesystem, or a per-user `~/.local`).
+
 
 ```bash
 # Re-plot validation results for train1 from the same config:

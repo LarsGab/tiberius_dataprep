@@ -121,7 +121,9 @@ process RUN_GFFCOMPARE {
 
 process PLOT_EVAL {
     tag { "${trainName}_${mode}" }
-    container { params.container }
+    // No container directive: matplotlib + pyyaml are not in the Tiberius
+    // image, so this process runs on the host Python env. Install with
+    // `pip install -e .` from the repo root before running the pipeline.
     publishDir { "${evalDir}/" }, mode: 'copy', pattern: '*.png'
 
     cpus   1
