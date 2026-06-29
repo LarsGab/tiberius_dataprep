@@ -253,11 +253,35 @@ nextflow run tiberius_dataprep/eval_training.nf \
 
 ### Outputs
 
-For each training run, the run produces the results for each evaluation (prediction as `.gtf` and accuracy as `.stats`) in the specified `EvalDir`:
+For each training run, the pipeline produces in the specified `eval_dir/`:
 
-### Plotting Evaluation Results
+| File                                          | Contents                                              |
+| --------------------------------------------- | ----------------------------------------------------- |
+| `<idx>.<epoch_*>.<species>.gtf`               | Prediction GTF for one epoch × one species            |
+| `<idx>.<epoch_*>.<species>.stats`             | `gffcompare` summary for the same                     |
+| `<run>_val_acc.png` *(without `--use_test`)*  | Transcript F1 over epochs, one line per val species   |
+| `<run>_test_acc.png` *(with `--use_test`)*    | Precision vs sensitivity scatter, one dot per test species |
 
-See `tiberius_dataprep/plot_acc.ipynb` for examples on how to plot the evaluation results.
+### Plotting evaluation results
+
+The pipeline runs [`tiberius_dataprep/bin/plot_eval.py`](tiberius_dataprep/bin/plot_eval.py)
+as a final step and writes the PNG above into each run's `eval_dir/`. You can
+also invoke it manually to re-plot with different filters:
+
+```bash
+# Re-plot validation results for train1 from the same config:
+plot_eval.py --config_yaml config/config.yaml --run train1 --mode val
+
+# Or, lower-level, pointing at a stats directory directly:
+plot_eval.py --stats_dir path/to/eval/train1 \
+             --species Bombyx_mori,Drosophila_melanogaster \
+             --mode val \
+             --out my_val_plot.png \
+             --title train1
+```
+
+The notebook [`tiberius_dataprep/plot_acc.ipynb`](tiberius_dataprep/plot_acc.ipynb)
+remains available for ad-hoc exploration.
 
 ## Running the tests
 

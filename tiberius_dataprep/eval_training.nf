@@ -39,7 +39,9 @@ def tiberiusImage(String version) {
 process RUN_TIBERIUS {
     label 'gpu'
 
-    publishDir { "${evalDir}/" }, mode: 'copy', pattern: '*.gtf'
+    // The pattern matches our 4-segment output filename (idx.epoch.species.gtf)
+    // but not the 2-segment staged reference annotation (<species>_longest.gtf).
+    publishDir { "${evalDir}/" }, mode: 'copy', pattern: '*.*.*.gtf'
 
     container { params.container }
     memory '190 GB'
@@ -100,7 +102,11 @@ process RUN_GFFCOMPARE {
         )
 
     output:
-        path "${idx}.${epochDir.name}.${speciesName}.stats"
+        tuple(
+            val(trainName),
+            val(evalDir),
+            path("${idx}.${epochDir.name}.${speciesName}.stats")
+        )
 
     script:
     """
@@ -110,6 +116,37 @@ process RUN_GFFCOMPARE {
       --strict-match -e 0 -T --no-merge \\
       ${gtf} \\
       -o ${idx}.${epochDir.name}.${speciesName}.stats
+    """
+}
+
+process PLOT_EVAL {
+    tag { "${trainName}_${mode}" }
+    container { params.container }
+    publishDir { "${evalDir}/" }, mode: 'copy', pattern: '*.png'
+
+    cpus   1
+    memory '2 GB'
+
+    input:
+        tuple(
+            val(trainName),
+            val(evalDir),
+            val(speciesCsv),
+            val(mode),
+            path(stats)
+        )
+
+    output:
+        path "*.png"
+
+    script:
+    """
+    plot_eval.py \\
+        --stats_dir . \\
+        --species "${speciesCsv}" \\
+        --mode ${mode} \\
+        --title "${trainName}" \\
+        --out ${trainName}_${mode}_acc.png
     """
 }
 
@@ -216,5 +253,15 @@ workflow {
             )
         }
 
-    jobInputs | RUN_TIBERIUS | RUN_GFFCOMPARE
+    def speciesCsv = speciesList.join(',')
+    def mode = splitName  // 'val' or 'test'
+
+    def gffOut = jobInputs | RUN_TIBERIUS | RUN_GFFCOMPARE
+
+    gffOut
+        .groupTuple(by: [0, 1])
+        .map { trainName, evalDir, statsFiles ->
+            tuple(trainName, evalDir, speciesCsv, mode, statsFiles)
+        }
+        | PLOT_EVAL
 }
