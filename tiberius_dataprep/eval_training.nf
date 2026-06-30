@@ -90,24 +90,10 @@ process RUN_TIBERIUS {
     } else {
         modelFlag = hmmFlag ? '--model_old' : '--model_lstm_old'
     }
-    // Tiberius 1.1.8's --model loader hard-codes 'weights.h5'. New-layout
-    // checkpoints use 'model.weights.h5' (2.0.6 has a fallback; 1.1.8
-    // doesn't). Make a local copy of the epoch dir (so we don't touch the
-    // user's original) and rename model.weights.h5 -> weights.h5 if needed.
-    // We copy rather than symlink because absolute symlink targets are not
-    // always visible inside the Singularity container's bind set.
     """
-    local_model=_model_${epochDir.name}
-    rm -rf "\$local_model"
-    mkdir -p "\$local_model"
-    cp -rL ${epochDir}/. "\$local_model/"
-    if [ ! -e "\$local_model/weights.h5" ] && [ -e "\$local_model/model.weights.h5" ]; then
-        mv "\$local_model/model.weights.h5" "\$local_model/weights.h5"
-    fi
-
     tiberius.py \\
         --genome ${genomeFa} \\
-        ${modelFlag} "\$local_model" \\
+        ${modelFlag} ${epochDir} \\
         --out ${idx}.${epochDir.name}.${speciesName}.gtf
     """
 }
@@ -221,6 +207,7 @@ workflow {
 
     // epochInfoList rows: [ trainName, idx, epochDir, evalDir, hmmFlag, modelFormat ]
     // modelFormat is 'new' or 'old', auto-detected from the directory contents.
+    def warnedAboutNewWithV1 = false
     def epochInfoList = []
     cfg.training.each { trainName, trainAttrs ->
 
@@ -229,17 +216,25 @@ workflow {
         if( !evalDir )
             error "training.${trainName}.eval_dir is missing in ${params.config_yaml}"
 
+        def addRow = { idx, epochDirObj ->
+            def fmt = detectModelFormat(epochDirObj)
+            if (fmt == 'new' && params.tiberius_version == '1.x' && !warnedAboutNewWithV1) {
+                log.warn "Checkpoint '${epochDirObj}' is in the new (Keras 3) layout but --tiberius_version=1.x is set. Tiberius 1.1.8 ships Keras 2 and cannot load Keras 3 weights -- the prediction step will fail with a 'Layer count mismatch' error. Re-run with --tiberius_version=2.x."
+                warnedAboutNewWithV1 = true
+            }
+            epochInfoList << [
+                trainName,
+                idx,
+                epochDirObj.toString(),
+                evalDir,
+                hmmFlag,
+                fmt
+            ]
+        }
+
         if( params.use_test ) {
             (trainAttrs.test_weights ?: []).eachWithIndex { twPath, i ->
-                def epochDir = file(twPath)
-                epochInfoList << [
-                    trainName,
-                    "test_${i}",
-                    epochDir.toString(),
-                    evalDir,
-                    hmmFlag,
-                    detectModelFormat(epochDir)
-                ]
+                addRow("test_${i}", file(twPath))
             }
             return  // skip the weights_dirs scan for this trainName
         }
@@ -250,14 +245,7 @@ workflow {
                 baseDir.listFiles()
                     .findAll { it.isDirectory() && it.name.startsWith('epoch_') }
                     .each { epochSubdir ->
-                        epochInfoList << [
-                            trainName,
-                            idx,
-                            epochSubdir.toString(),
-                            evalDir,
-                            hmmFlag,
-                            detectModelFormat(epochSubdir)
-                        ]
+                        addRow(idx, epochSubdir)
                     }
             }
         }
