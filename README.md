@@ -10,6 +10,10 @@ The pipelines need three things on the host: Nextflow, a container runtime
 Everything else — Python, TensorFlow, Tiberius itself, `gffread` — lives inside
 the pinned container.
 
+```bash
+pip install -e .
+```
+
 > Install the host-side Python deps once with `pip install -e .` from the
 > repo root. `pyproject.toml` pins `matplotlib`, `pyyaml`, `scipy`, and
 > `biopython`; the eval pipeline's `PLOT_EVAL` step uses them on the host
