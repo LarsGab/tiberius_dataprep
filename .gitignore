@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+graphify-out/
+!graphify-out/GRAPH_REPORT.md
+.claude/
+CLAUDE.md

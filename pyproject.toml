@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tiberius_dataprep"
+version = "0.2.0"
+description = "Nextflow pipelines that prepare TFRecord training data for Tiberius and evaluate trained checkpoints."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.9"
+dependencies = [
+    "pyyaml>=6.0",
+    "scipy>=1.10",
+    "matplotlib>=3.7",
+    "biopython>=1.81",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+]
+
+[tool.setuptools.packages.find]
+include = ["tiberius_dataprep*"]
+exclude = ["tests*", "config*", "docs*"]

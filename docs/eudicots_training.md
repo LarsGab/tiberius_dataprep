@@ -2,6 +2,11 @@
 
 This document describes the workflow used to create the Mammalian and Eudicot weights for Tiberius and serves as a default strategy for training a new clade.
 
+> **Note.** This file is a clade-specific narrative for the eudicot
+> training run. The authoritative, up-to-date Tiberius training workflow lives
+> upstream at
+> [Gaius-Augustus/Tiberius docs/training_large_data.md](https://github.com/Gaius-Augustus/Tiberius/blob/main/docs/training_large_data.md).
+> When upstream and this document conflict, trust upstream.
 
 Training consits of 3 steps:
 1. Data preparation – convert genomes + annotations into TFRecords.
@@ -13,18 +18,25 @@ Training consits of 3 steps:
 ## Required software
 
 
-### Tiberius (**refactor_hmm_improve_testing branch**)
+### Tiberius
 
-**Singularity**:
+Use a pinned version. The `tiberius_dataprep` Nextflow pipelines select the
+image automatically via `--tiberius_version 1.x` or `2.x` (default `2.x`); see
+the main README. For a manual install, pick one:
+
+**Singularity** (image is pulled automatically by the pipeline; only needed for
+direct CLI use):
 ```
-singularity build tiberius.sif docker://larsgabriel23/tiberius:dev
+singularity build tiberius.sif docker://larsgabriel23/tiberius:2.0.6
+# or, for the v1 line:
+singularity build tiberius.sif docker://larsgabriel23/tiberius:1.1.8
 ```
 
-**GitHub**:
+**From source**:
 ```
-git pull https://github.com/Gaius-Augustus/Tiberius
+git clone https://github.com/Gaius-Augustus/Tiberius
 cd Tiberius
-git checkout refactor_hmm_improve_testing
+git checkout v2.0.6   # or v1.1.8
 pip install .
 ```
 
@@ -47,15 +59,19 @@ nextflow -v
 echo 'export PATH="$PWD:$PATH"' >> ~/.bashrc
 ```
 
-**Adapt the `config/nextflow.config` to the specifics of your cluster.** Currently, the configuration is set for the BRAIN cluster at University Greifswald
+See *Choosing an execution profile* in the main `README.md` for how to point
+the pipeline at your cluster. The bundled `slurm_brain` profile matches the
+BRAIN cluster at University Greifswald; copy `config/slurm_generic.config` to add
+your own.
 
 ### gffcompare
 
-Get the latest release from [GitHub](https://github.com/gpertea/gffcompare/releases/tag/v0.12.9) 
+Use version **0.12.6** — newer releases (e.g. v0.12.9) may report inaccurate
+exon/transcript-level numbers.
 
 ```bash
-wget https://github.com/gpertea/gffcompare/releases/download/v0.12.9/gffcompare-0.12.9.Linux_x86_64.tar.gz
-tar xzf gffcompare-0.12.9.Linux_x86_64.tar.gz
+wget https://github.com/gpertea/gffcompare/releases/download/v0.12.6/gffcompare-0.12.6.Linux_x86_64.tar.gz
+tar xzf gffcompare-0.12.6.Linux_x86_64.tar.gz
 cd gffcompare-0.12.6.Linux_x86_64
 export PATH="$(pwd):$PATH"
 ```
@@ -86,12 +102,12 @@ Matching pairs of genome FASTA and annotation GFF3 files in **two separate direc
 gffread -T athal.gff3 -o athal.gtf
 
 # ensure correct format
-tiberius/reformat_gtf.py --input athal.gtf \
+reformat_gtf.py --input athal.gtf \
         --out   athal_reformat.gtf \
         --prefix athal_
 
-# get longest isoform per gene
-get_longest_isoform.py  athal_reformat.gtf > athal_longest.gtf
+# select one isoform per gene
+select_single_isoform.py athal_reformat.gtf > athal_longest.gtf
 
 # write 100 tfRecords per species
 write_tfrecord_species.py \

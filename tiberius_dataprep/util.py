@@ -66,7 +66,6 @@ def read_training_stats(training_dir, species_list=[]):
     return epoch_stats
 
 def get_best_epoch(stats, metrics=["Transcript", "Exon"], strict=True):
-    print(len(stats), stats)
     curr_best = -1
     epoch = [-1,-1]
     for i in range(500):
@@ -199,7 +198,7 @@ def plot_accuracies(stats_list, run_labels=None):
             # Compute Exon accuracy if available, else use None
             if "Exon" in metrics:
                 exon = metrics["Exon"]
-                exon_accuracies.append(scipy.stats.hmean([exon["sensitivity"] + exon["precision"]]))
+                exon_accuracies.append(scipy.stats.hmean([exon["sensitivity"], exon["precision"]]))
             else:
                 exon_accuracies.append(None)
         
